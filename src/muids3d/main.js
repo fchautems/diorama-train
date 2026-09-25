@@ -97,6 +97,9 @@ let buildingsTiles = null;
 let vegetationTiles = null;
 let buildingsInitializing = false;
 let vegetationInitializing = false;
+let activeRailCurve = null;
+let corridorRemovedBuildings = 0;
+let corridorRemovedVegetation = 0;
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath(
@@ -119,6 +122,145 @@ function lineStrings(geometry) {
   if (geometry.type === 'Polygon') return geometry.coordinates;
   if (geometry.type === 'MultiPolygon') return geometry.coordinates.flat();
   return [];
+}
+
+function clipSegmentToBbox(a, b, bbox) {
+  const [minE, minN, maxE, maxN] = bbox;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+
+  let t0 = 0;
+  let t1 = 1;
+
+  const tests = [
+    [-dx, a[0] - minE],
+    [ dx, maxE - a[0]],
+    [-dy, a[1] - minN],
+    [ dy, maxN - a[1]]
+  ];
+
+  for (const [p, q] of tests) {
+    if (Math.abs(p) < 1e-9) {
+      if (q < 0) return null;
+      continue;
+    }
+
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return null;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return null;
+      if (r < t1) t1 = r;
+    }
+  }
+
+  return [
+    [a[0] + dx * t0, a[1] + dy * t0],
+    [a[0] + dx * t1, a[1] + dy * t1]
+  ];
+}
+
+function clipPolylineToBbox(points, bbox) {
+  const segments = [];
+  let current = [];
+
+  for (let i = 1; i < points.length; i++) {
+    const clipped = clipSegmentToBbox(
+      points[i - 1],
+      points[i],
+      bbox
+    );
+
+    if (!clipped) {
+      if (current.length >= 2) segments.push(current);
+      current = [];
+      continue;
+    }
+
+    const [a, b] = clipped;
+
+    if (!current.length) {
+      current.push(a, b);
+      continue;
+    }
+
+    const last = current[current.length - 1];
+    if (distance2D(last, a) < 0.01) {
+      current.push(b);
+    } else {
+      if (current.length >= 2) segments.push(current);
+      current = [a, b];
+    }
+  }
+
+  if (current.length >= 2) segments.push(current);
+  return segments;
+}
+
+function unit2(a, b) {
+  const x = b[0] - a[0];
+  const y = b[1] - a[1];
+  const len = Math.hypot(x, y) || 1;
+  return [x / len, y / len];
+}
+
+function cubicBezierSamples(p0, p1, startTangent, endTangent, h0, h1, steps = 10) {
+  const c1 = [
+    p0[0] + startTangent[0] * h0,
+    p0[1] + startTangent[1] * h0
+  ];
+  const c2 = [
+    p1[0] - endTangent[0] * h1,
+    p1[1] - endTangent[1] * h1
+  ];
+
+  const out = [];
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const u = 1 - t;
+    out.push([
+      u*u*u*p0[0] +
+        3*u*u*t*c1[0] +
+        3*u*t*t*c2[0] +
+        t*t*t*p1[0],
+      u*u*u*p0[1] +
+        3*u*u*t*c1[1] +
+        3*u*t*t*c2[1] +
+        t*t*t*p1[1]
+    ]);
+  }
+  return out;
+}
+
+function railDistance2D(point, curve, samples = 260) {
+  let best = Infinity;
+  let prev = curve.getPointAt(0);
+
+  for (let i = 1; i <= samples; i++) {
+    const curr = curve.getPointAt(i / samples);
+
+    const ax = prev.x;
+    const az = prev.z;
+    const bx = curr.x;
+    const bz = curr.z;
+    const vx = bx - ax;
+    const vz = bz - az;
+    const wx = point.x - ax;
+    const wz = point.z - az;
+    const vv = vx * vx + vz * vz;
+
+    let t = vv > 0 ? (wx * vx + wz * vz) / vv : 0;
+    t = THREE.MathUtils.clamp(t, 0, 1);
+
+    const px = ax + vx * t;
+    const pz = az + vz * t;
+    best = Math.min(best, Math.hypot(point.x - px, point.z - pz));
+
+    prev = curr;
+  }
+
+  return best;
 }
 
 function flatTerrainModel(bbox, stationHeight) {
@@ -437,12 +579,12 @@ function buildStationRightRailLoop(official) {
     const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
     return {
       points: [
-        [LE_MUIDS.station[0], minN + 40],
-        [LE_MUIDS.station[0] + 45, minN + 22],
-        [maxE - 55, minN + 28],
-        [maxE - 18, (minN + maxN) / 2],
-        [maxE - 55, maxN - 28],
-        [LE_MUIDS.station[0] + 45, maxN - 22]
+        [LE_MUIDS.station[0], minN + 35],
+        [LE_MUIDS.station[0] + 85, minN + 20],
+        [maxE - 70, minN + 18],
+        [maxE - 14, (minN + maxN) / 2],
+        [maxE - 70, maxN - 18],
+        [LE_MUIDS.station[0] + 85, maxN - 20]
       ],
       realSegment: [],
       realLength: 0,
@@ -456,43 +598,79 @@ function buildStationRightRailLoop(official) {
     105
   );
 
-  // Always run the real section from south to north, so the added loop
-  // naturally leaves the north end, circles the village on the right,
-  // and returns to the south end.
   if (realSegment[0][1] > realSegment[realSegment.length - 1][1]) {
     realSegment = realSegment.reverse();
   }
 
   const southEnd = realSegment[0];
   const northEnd = realSegment[realSegment.length - 1];
+  const southTangent = unit2(realSegment[0], realSegment[1]);
+  const northTangent = unit2(
+    realSegment[realSegment.length - 2],
+    realSegment[realSegment.length - 1]
+  );
+
   const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
+  const east = maxE - 10;
+  const top = maxN - 12;
+  const bottom = minN + 12;
+  const midN = (minN + maxN) / 2;
 
-  const east = maxE - 22;
-  const top = maxN - 22;
-  const bottom = minN + 22;
-  const rightMidN = (minN + maxN) / 2;
+  // The first/last fictional points are intentionally well to the east.
+  // The cubic transitions keep the same tangent as the real rail for a
+  // significant distance before the circuit bends towards the village.
+  const northEntry = [
+    Math.max(LE_MUIDS.station[0] + 135, northEnd[0] + 110),
+    Math.min(top, northEnd[1] + 42)
+  ];
 
+  const southEntry = [
+    Math.max(LE_MUIDS.station[0] + 135, southEnd[0] + 110),
+    Math.max(bottom, southEnd[1] - 42)
+  ];
+
+  const northTransition = cubicBezierSamples(
+    northEnd,
+    northEntry,
+    northTangent,
+    [1, 0],
+    85,
+    55,
+    12
+  );
+
+  const southTransition = cubicBezierSamples(
+    southEntry,
+    southEnd,
+    [-1, 0],
+    southTangent,
+    55,
+    85,
+    12
+  );
+
+  // Wide loop around the outside of the village. This route deliberately
+  // favours the periphery; any residual conflicting 3D objects are filtered
+  // by the rail corridor when official tiles load.
   const outerArc = [
-    [
-      Math.max(northEnd[0] + 40, LE_MUIDS.station[0] + 55),
-      Math.min(top, northEnd[1] + 25)
-    ],
-    [LE_MUIDS.station[0] + 170, top],
-    [maxE - 85, top],
-    [east, rightMidN + 55],
-    [east, rightMidN - 55],
-    [maxE - 85, bottom],
-    [LE_MUIDS.station[0] + 170, bottom],
-    [
-      Math.max(southEnd[0] + 40, LE_MUIDS.station[0] + 55),
-      Math.max(bottom, southEnd[1] - 25)
-    ]
+    northEntry,
+    [LE_MUIDS.station[0] + 235, top],
+    [maxE - 90, top],
+    [maxE - 25, top - 42],
+    [east, midN + 58],
+    [east, midN - 58],
+    [maxE - 25, bottom + 42],
+    [maxE - 90, bottom],
+    [LE_MUIDS.station[0] + 235, bottom],
+    southEntry
   ];
 
   return {
     points: [
       ...realSegment,
-      ...outerArc
+      ...northTransition,
+      ...outerArc.slice(1),
+      ...southTransition
     ],
     realSegment,
     realLength: polylineLength(realSegment),
@@ -580,24 +758,32 @@ function buildOfficialNetwork(official) {
     for (const points of lineStrings(feature.geometry)) {
       if (points.length < 2) continue;
 
-      // Important: keep every official road at ground level for now.
-      // We no longer lower all roads around the future tunnel markers.
-      const mesh = tubeFromPoints(
+      const clippedSegments = clipPolylineToBbox(
         points,
-        isRail ? 0.50 : 0.34,
-        isRail ? 0x34383b : 0x5f6569,
-        isRail ? 1.10 : 0.82,
-        false,
-        0.7
+        LE_MUIDS.bbox
       );
 
-      if (!mesh) continue;
+      for (const clipped of clippedSegments) {
+        const mesh = tubeFromPoints(
+          clipped,
+          isRail ? 0.50 : 0.34,
+          isRail ? 0x34383b : 0x5f6569,
+          isRail ? 1.10 : 0.82,
+          false,
+          0.7
+        );
 
-      mesh.userData.kind = isRail ? 'officialRail' : 'officialRoad';
-      groups.real.add(mesh);
+        if (!mesh) continue;
 
-      if (isRail) rails++;
-      else roads++;
+        mesh.userData.kind = isRail
+          ? 'officialRail'
+          : 'officialRoad';
+
+        groups.real.add(mesh);
+
+        if (isRail) rails++;
+        else roads++;
+      }
     }
   }
 
@@ -663,11 +849,16 @@ function sceneClippingPlanes() {
   const minZ = -(sceneMaxN - centerN);
   const maxZ = -(sceneMinN - centerN);
 
+  const bottomCut = terrainModel
+    ? terrainModel.minHeight - terrainModel.stationHeight - 3
+    : -15;
+
   return [
     new THREE.Plane(new THREE.Vector3(1, 0, 0), -minX),
     new THREE.Plane(new THREE.Vector3(-1, 0, 0), maxX),
     new THREE.Plane(new THREE.Vector3(0, 0, 1), -minZ),
-    new THREE.Plane(new THREE.Vector3(0, 0, -1), maxZ)
+    new THREE.Plane(new THREE.Vector3(0, 0, -1), maxZ),
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), -bottomCut)
   ];
 }
 
@@ -682,6 +873,71 @@ function applySceneClipping(material) {
     item.clipIntersection = false;
     item.needsUpdate = true;
   }
+}
+
+function meshWorldBounds(mesh) {
+  mesh.updateWorldMatrix(true, false);
+  const box = new THREE.Box3().setFromObject(mesh);
+  return box;
+}
+
+function shouldHideMeshFromScene(mesh, kind) {
+  const box = meshWorldBounds(mesh);
+  if (box.isEmpty()) return false;
+
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+
+  const minX = sceneMinE - centerE;
+  const maxX = sceneMaxE - centerE;
+  const minZ = -(sceneMaxN - centerN);
+  const maxZ = -(sceneMinN - centerN);
+  const bottomCut = terrainModel
+    ? terrainModel.minHeight - terrainModel.stationHeight - 3
+    : -15;
+
+  if (
+    center.x < minX - 5 ||
+    center.x > maxX + 5 ||
+    center.z < minZ - 5 ||
+    center.z > maxZ + 5 ||
+    box.max.y < bottomCut
+  ) {
+    return true;
+  }
+
+  if (!activeRailCurve) return false;
+
+  // Keep the real-station section intact visually; clearance filtering is
+  // mainly for the added loop through the diorama.
+  const corridor = kind === 'buildings' ? 11 : 8;
+  const footprintRadius = Math.min(
+    12,
+    0.5 * Math.hypot(size.x, size.z)
+  );
+
+  return railDistance2D(
+    center,
+    activeRailCurve
+  ) < corridor + footprintRadius;
+}
+
+function filterLoadedOfficialScene(root, kind) {
+  root?.updateMatrixWorld(true);
+
+  root?.traverse(node => {
+    if (!node.isMesh) return;
+
+    if (shouldHideMeshFromScene(node, kind)) {
+      node.visible = false;
+
+      if (kind === 'buildings') {
+        corridorRemovedBuildings++;
+      } else {
+        corridorRemovedVegetation++;
+      }
+    }
+  });
 }
 
 async function createOfficialTilesLayer(url, kind, toggle) {
@@ -731,6 +987,15 @@ async function createOfficialTilesLayer(url, kind, toggle) {
       node.castShadow = kind === 'buildings';
       node.receiveShadow = true;
     });
+
+    filterLoadedOfficialScene(
+      event.scene,
+      kind
+    );
+
+    if (typeof updateStatus === 'function') {
+      updateStatus();
+    }
   });
 
   tiles.addEventListener('load-error', event => {
@@ -863,10 +1128,22 @@ const hybridRail = buildStationRightRailLoop(
   official
 );
 
+const railClearance = makeRibbon(
+  hybridRail.points,
+  11.5,
+  0x8a7a61,
+  0.45,
+  true
+);
+railClearance.mesh.material.roughness = 1;
+railClearance.mesh.receiveShadow = true;
+groups.fiction.add(railClearance.mesh);
+
 const railCurve = addTrack(
   hybridRail.points,
   groups.fiction
 );
+activeRailCurve = railCurve;
 
 // The former yellow inner-road polygon is intentionally NOT rendered here.
 // It stays in the design data until we rebuild it from the official road
@@ -1053,16 +1330,24 @@ const relief = (
   terrainModel.minHeight
 ).toFixed(1);
 
-status.textContent =
-  'Prêt · ' +
-  hybridRail.realLength.toFixed(0) +
-  ' m de vraie voie intégrés à la boucle · relief ' +
-  relief +
-  ' m · cadrage village 505×295 m · ' +
-  counts.roads +
-  ' routes · ' +
-  counts.rails +
-  ' voies officielles';
+function updateStatus() {
+  status.textContent =
+    'Prêt · ' +
+    hybridRail.realLength.toFixed(0) +
+    ' m de vraie voie · relief ' +
+    relief +
+    ' m · cadrage village 505×295 m · ' +
+    counts.roads +
+    ' routes · ' +
+    counts.rails +
+    ' voies · objets écartés du rail: ' +
+    corridorRemovedBuildings +
+    ' maisons / ' +
+    corridorRemovedVegetation +
+    ' végétation';
+}
+
+updateStatus();
 
 const clock = new THREE.Clock();
 
