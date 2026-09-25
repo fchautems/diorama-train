@@ -6,44 +6,59 @@ Dernière mise à jour: 2026-09-25
 - Dépôt `fchautems/diorama-train`.
 - Runtime: Three.js/WebGL dans le navigateur.
 - Direction: diorama ferroviaire low-poly / maquette miniature.
-- Les premiers assets GLB ont été visuellement validés par l'utilisateur comme une base correcte.
+- v0.2 a été testée visuellement par l'utilisateur. Retours principaux: PNJ qui reculent et traversent librement, voie trop épaisse/bizarre, brouillard inutile, montagnes trop grandes et hors plateau, arbres parfois sur la voie, végétation trop pauvre.
 
-## Changements v0.2
-- La simple galerie d'assets a été remplacée par une vraie scène de diorama plus grande.
-- Plateau elliptique agrandi.
-- Boucle ferroviaire complète générée en Three.js: ballast, 2 rails, 112 traverses.
-- Locomotive Kenney + 2 wagons animés sur la boucle.
-- Quai et bâtiment de gare.
-- 4 bâtiments répartis dans le village en plus de la gare.
-- 15 arbres Kenney.
-- 4 personnages Kenney qui se déplacent en boucle et jouent une animation disponible (Walk/Run/Idle par préférence).
-- Ajout de 3 vaches Quaternius CC0 dans un pâturage clôturé; animations disponibles exploitées.
-- Ajout d'un étang, d'une chaîne de montagnes low-poly, d'un ciel en dégradé et de nuages mobiles.
-- Commandes UI: pause/reprise, jour/nuit, vue initiale.
-- Ajout de `START_DIORAMA.bat`: double-clic sous Windows pour démarrer le serveur local et ouvrir le navigateur.
-- Provenance/licences mises à jour.
+## Changements v0.3
+- Suppression complète du brouillard.
+- Plateau agrandi pour donner plus d'espace de composition.
+- Voie entièrement refaite:
+  - ballast plat en ruban, plus de gros tube gris ;
+  - deux rails métalliques fins ;
+  - 132 traverses.
+- Train conservé avec locomotive + 2 wagons.
+- Ajout d'un comportement ferroviaire: ralentissement, arrêt de 4,5 s en gare, puis redémarrage.
+- PNJ:
+  - suppression des trajectoires libres autour de centres arbitraires ;
+  - création de 3 chemins/splines dédiés et visibles ;
+  - 4 promeneurs restent sur ces chemins ;
+  - 1 cinquième personnage reste à la gare ;
+  - correction de l'orientation: suppression du retournement de 180° qui les faisait marcher à reculons.
+- Vaches confinées à une spline fermée à l'intérieur du pâturage.
+- Végétation:
+  - ajout du Kenney Nature Kit CC0 ;
+  - chêne, pin, arbre haut, buisson, herbe et rocher ajoutés au dépôt ;
+  - environ 36 arbres, 34 buissons et 115 touffes d'herbe placés de façon déterministe ;
+  - zones d'exclusion autour des voies, chemins, bâtiments, étang et pâturage.
+- Relief:
+  - retrait des grands cônes montagneux ;
+  - remplacement par une ligne de collines low-poly plus basses, intégrées au fond de la maquette.
+- Nuages refaits avec des formes low-poly plus plates.
+- Gare enrichie avec bancs et lampadaires ; les lampes s'allument en mode nuit.
+- Le lanceur Windows `START_DIORAMA.bat` reste le point d'entrée.
 
-## Échelle
-- Train Kit: locomotive de référence ~5.5 m sur son axe horizontal principal.
-- City Kit: bâtiment A de référence ~5.2 m de haut.
-- Mini Characters: personnage de référence ~1.72 m.
-- Vache Quaternius: ~1.5 m de haut.
+## Choix technique PNJ / collisions
+Pas de moteur de physique ni de navmesh à ce stade. Les personnages suivent des chemins explicites. Pour un diorama observé de l'extérieur, cette méthode garantit qu'ils restent sur les zones prévues sans introduire une simulation plus lourde.
 
-## Contrôles effectués
-- Syntaxe de `src/main.js` vérifiée avec `node --check`.
-- Licence officielle Quaternius Farm Animal Pack: CC0.
-- La copie GLB utilisée est accompagnée d'un fichier de provenance qui identifie explicitement la vache Quaternius sous CC0.
-- Aucun générateur externe n'est nécessaire pour lancer la scène.
+## Assets ajoutés en v0.3
+Kenney Nature Kit, CC0:
+- `tree_oak.glb`
+- `tree_pineRoundC.glb`
+- `tree_tall.glb`
+- `plant_bushDetailed.glb`
+- `grass_large.glb`
+- `rock_largeC.glb`
 
 ## À vérifier visuellement
-- Sens exact de la locomotive sur la spline.
-- Distance visuelle entre locomotive et wagons dans les courbes.
-- Orientation des personnages/vaches par rapport à leur trajectoire.
-- Taille/position des montagnes selon l'angle de caméra.
-- Performance sur la machine cible.
+- Sens réel des personnages après retrait du yaw +180°.
+- Sens de la locomotive et écart entre wagons dans les courbes.
+- Qualité visuelle du nouveau ballast plat.
+- Placement des arbres/buissons/herbes par rapport aux rails et bâtiments.
+- Taille du nouveau relief de fond.
+- Arrêt du train en gare et reprise après 4,5 s.
+- Charge/performance de la végétation sur la machine cible.
 
-## Décision bâtiments
-Les bâtiments actuels du Kenney City Kit (Suburban) sont des modèles prêts à l'emploi. Si l'on veut plus de liberté architecturale, passer ultérieurement au Kenney Modular Buildings plutôt que fabriquer des maisons grossières à la main.
+## Bâtiments
+Les maisons actuelles restent des modèles complets du Kenney City Kit (Suburban). Si la prochaine passe demande plus de variété architecturale, privilégier Kenney Modular Buildings plutôt que des bâtiments procéduraux grossiers.
 
 ## Prochaine action
-Lancer `START_DIORAMA.bat`, faire une passe visuelle de v0.2 et corriger en priorité les orientations/proportions évidentes avant d'ajouter davantage de détails.
+Lancer v0.3 via `START_DIORAMA.bat`, faire une nouvelle passe visuelle, puis corriger uniquement les défauts constatés avant d'ajouter de nouveaux événements.

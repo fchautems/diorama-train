@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "units": "1 Three.js unit ~= 1 meter",
   "packs": {
     "kenney-train-kit": {
@@ -25,9 +25,7 @@
       },
       "assets": [
         "building-type-a.glb",
-        "building-type-h.glb",
-        "tree-large.glb",
-        "tree-small.glb"
+        "building-type-h.glb"
       ]
     },
     "kenney-mini-characters": {
@@ -40,6 +38,22 @@
       "assets": [
         "character-male-a.glb",
         "character-female-a.glb"
+      ]
+    },
+    "kenney-nature-kit": {
+      "license": "CC0-1.0",
+      "official": "https://kenney.nl/assets/nature-kit",
+      "scale_reference": "tree_oak.glb",
+      "scale_target": {
+        "height_m": 5.4
+      },
+      "assets": [
+        "tree_oak.glb",
+        "tree_pineRoundC.glb",
+        "tree_tall.glb",
+        "plant_bushDetailed.glb",
+        "grass_large.glb",
+        "rock_largeC.glb"
       ]
     },
     "quaternius-farm-animal": {
@@ -55,12 +69,16 @@
   },
   "procedural": [
     "terrain",
-    "oval-track",
+    "flat-ballast-ribbon",
+    "rails",
     "sleepers",
+    "pedestrian-paths",
     "platform",
     "fences",
+    "benches",
+    "lamps",
     "pond",
-    "mountains",
+    "low-hills",
     "clouds",
     "station-sign"
   ]
