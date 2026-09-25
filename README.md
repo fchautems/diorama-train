@@ -71,3 +71,13 @@ Voir `assets/ATTRIBUTION.md` et `assets/asset-manifest.json` pour les sources et
 - clipping bas pour limiter les objets sous le socle;
 - réseau officiel coupé aux limites de la scène;
 - route intérieure provisoire toujours masquée jusqu'à reconstruction depuis les routes officielles.
+
+
+### v0.5.2 — validation screenshot
+
+Cette version est la première dont le contrôle avant livraison vérifie réellement le rendu:
+- Playwright attend des bâtiments et arbres visibles au-dessus du terrain;
+- deux screenshots sont produits (perspective + dessus);
+- raccords rail réel/fictif mesurés automatiquement;
+- alignement vertical swissBUILDINGS3D/terrain corrigé automatiquement;
+- boucle resserrée autour d'environ 116 m de vraie voie puis envoyée vers la périphérie droite.
