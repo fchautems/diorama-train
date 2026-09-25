@@ -59,3 +59,15 @@ Passe corrective basée sur les captures de v0.3 :
 ## Assets
 
 Voir `assets/ATTRIBUTION.md` et `assets/asset-manifest.json` pour les sources et licences.
+
+
+### v0.5 — géométrie ferroviaire propre
+
+- tronçon réel conservé autour de la gare;
+- raccords tangents et progressifs vers la boucle fictive;
+- boucle repoussée vers la périphérie droite;
+- corridor ferroviaire fictif de sécurité;
+- bâtiments/végétation officiels masqués automatiquement s'ils tombent dans ce corridor ou hors du plateau;
+- clipping bas pour limiter les objets sous le socle;
+- réseau officiel coupé aux limites de la scène;
+- route intérieure provisoire toujours masquée jusqu'à reconstruction depuis les routes officielles.
