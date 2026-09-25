@@ -426,6 +426,11 @@ async function initBuildings3D() {
     tiles.group.matrixAutoUpdate = false;
     tiles.group.matrix.copy(ecefToLocal);
     tiles.group.updateMatrixWorld(true);
+    if (tiles.group.matrixWorldInverse) {
+      tiles.group.matrixWorldInverse
+        .copy(tiles.group.matrixWorld)
+        .invert();
+    }
     tiles.group.visible = buildingsToggle.checked;
 
     tiles.addEventListener('load-model', event => {
