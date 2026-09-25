@@ -36,7 +36,7 @@
 <div id="app">
   <div class="hud">
     <strong>Le Muids · prototype 3D géoréférencé v0.2</strong>
-    <small>Relief swisstopo réel + réseau LV95 + couche fictive + swissBUILDINGS3D optionnel.</small>
+    <small>Le train utilise maintenant la vraie voie à la gare puis rejoint seulement ensuite la boucle fictive. Maisons et arbres officiels se chargent automatiquement.</small>
     <div class="row">
       <button id="pause">⏸ Train</button>
       <button id="reset">↺ Vue initiale</button>
@@ -44,11 +44,11 @@
       <label><input id="real" type="checkbox" checked> réseau réel</label>
       <label><input id="fiction" type="checkbox" checked> fiction</label>
       <label><input id="terrain" type="checkbox" checked> relief</label>
-      <label><input id="buildings" type="checkbox"> bâtiments 3D</label>
+      <label><input id="buildings" type="checkbox" checked> maisons</label>
+      <label><input id="vegetation" type="checkbox" checked> arbres</label>
     </div>
     <div class="row">
       <a class="btn" href="./layout-official.html">Plan officiel 2D</a>
-      <a class="btn" href="./layout-fiction-editor.html">Éditer la fiction</a>
     </div>
     <div id="status">Chargement…</div>
   </div>
@@ -58,7 +58,8 @@
     <div><span class="sw" style="background:#9b7a58"></span>boucle train fictive</div>
     <div><span class="sw" style="background:#d6c9ad"></span>route intérieure fictive</div>
     <div><span class="sw" style="background:#2b72d6"></span>passages inférieurs prévus</div>
-    <div><span class="sw" style="background:#d9c28c"></span>swissBUILDINGS3D</div>
+    <div><span class="sw" style="background:#d9c28c"></span>maisons officielles</div>
+    <div><span class="sw" style="background:#5e8451"></span>végétation officielle</div>
   </div>
 </div>
 <script type="module" src="./src/muids3d/main.js"></script>
