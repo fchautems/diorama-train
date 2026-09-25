@@ -1,0 +1,11 @@
+{
+  "name": "diorama-train",
+  "private": true,
+  "version": "0.5.1",
+  "scripts": {
+    "visual:check": "playwright test tests/visual-smoke.spec.mjs --reporter=line"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
