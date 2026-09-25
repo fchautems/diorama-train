@@ -1,13 +1,15 @@
 export const LE_MUIDS = {
   sr: 2056,
   // Official coordinates are in LV95 metres.
-  // Centered on Le Muids station (approx. E 2'506'023 / N 1'145'508).
-  bbox: [2505500, 1145000, 2506900, 1145900],
+  // Tight scene extent chosen to match the actual Le Muids village view:
+  // station on the left, village on the right. Approx. 505 x 295 m.
+  bbox: [2505955, 1145355, 2506460, 1145650],
   station: [2506023.16, 1145508.25],
   layers: {
     roads: 'ch.swisstopo.swisstlm3d-strassen',
     rail: 'ch.swisstopo.swisstlm3d-eisenbahnnetz',
-    cadastralWms: 'ch.swisstopo-vd.amtliche-vermessung'
+    cadastralWms: 'ch.swisstopo-vd.amtliche-vermessung',
+    orthophotoWms: 'ch.swisstopo.swissimage'
   }
 };
 
