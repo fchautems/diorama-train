@@ -174,3 +174,30 @@ Après validation visuelle de v0.3:
 - reconstruire automatiquement la route intérieure en s'appuyant d'abord sur les rues officielles, puis ajouter seulement les raccords fictifs nécessaires;
 - construire deux vrais passages inférieurs de la Route cantonale (géométrie + masquage/percement du terrain), sans marqueurs de debug visibles;
 - styliser maisons et végétation vers l'esthétique diorama.
+
+
+## Prototype 3D LV95 v0.4 — recadrage corrigé
+Diagnostic du retour utilisateur:
+- la bbox précédente couvrait ~1.4 km × 0.9 km, beaucoup trop large par rapport à la vue de référence du village (~0.5 km × 0.3 km);
+- cela plaçait visuellement la gare trop près du centre au lieu de la laisser à gauche;
+- swissBUILDINGS3D et la végétation chargeaient au-delà du plateau, donnant l'impression que les couches étaient décalées;
+- le fond cadastral beige rendait la scène difficile à comparer avec la capture satellite.
+
+Corrections:
+- bbox resserrée à `[2505955,1145355,2506460,1145650]` (~505 × 295 m);
+- caméra et cible calculées depuis cette bbox: gare à gauche, village à droite;
+- fond 3D remplacé par swissIMAGE (orthophoto officielle);
+- boucle ferroviaire reconstruite: ~210 m de vraie voie autour de la gare puis boucle uniquement à droite;
+- swissBUILDINGS3D et végétation 3D sont découpés par 4 plans de clipping sur les limites de la scène;
+- sampling du relief réécrit en profils horizontaux 17×11 pour éviter le fallback plat;
+- fallback altitude gare fixé à 715 m;
+- plan officiel 2D recadré sur la même bbox et sur swissIMAGE;
+- éditeur manuel retiré du workflow et redirigé vers le prototype 3D.
+
+## À tester sur v0.4
+- gare visuellement à gauche;
+- boucle train ne part plus à gauche de la gare;
+- orthophoto comparable à la capture utilisateur;
+- maisons/arbres limités au plateau;
+- relief non nul dans le statut;
+- voies officielles et bâtiments correctement alignés.
