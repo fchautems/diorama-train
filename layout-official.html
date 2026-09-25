@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Le Muids — données officielles</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#151719;color:#eee}
+  #app{height:100%;display:grid;grid-template-rows:auto 1fr}
+  .bar{padding:9px 12px;background:#1d2023;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #35393d}
+  .bar strong{margin-right:8px}
+  .bar label,.bar button,.bar select{font-size:13px}
+  button,select{background:#292d31;color:#eee;border:1px solid #50555a;border-radius:6px;padding:5px 8px}
+  button{cursor:pointer}
+  .stage{position:relative;overflow:auto;background:#222}
+  .wrap{position:relative;width:min(100vw,1600px);aspect-ratio:14/9;margin:0 auto;background:#ece9df}
+  #bg,#svg{position:absolute;inset:0;width:100%;height:100%}
+  #bg{object-fit:fill;opacity:.88}
+  #svg{overflow:hidden}
+  .road{stroke:#ff9e2c;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  .rail{stroke:#e6223b;stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+  .station{fill:#3f88ff;stroke:white;stroke-width:2;vector-effect:non-scaling-stroke}
+  .cross{stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke}
+  .legend{position:absolute;left:12px;bottom:12px;background:rgba(16,18,20,.9);padding:9px 11px;border:1px solid #555;border-radius:8px;font-size:12px;line-height:1.5}
+  .swatch{display:inline-block;width:22px;height:4px;margin-right:7px;vertical-align:middle}
+  .status{font-size:12px;color:#b8c0c7}
+  .error{color:#ff8d8d}
+  .good{color:#8de39e}
+  .note{font-size:11px;color:#aeb6bc}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <strong>Le Muids · OFFICIEL</strong>
+    <label><input id="cadastre" type="checkbox" checked> fond AV officiel</label>
+    <label><input id="roads" type="checkbox" checked> routes swissTLM3D</label>
+    <label><input id="rail" type="checkbox" checked> voies swissTLM3D</label>
+    <button id="reload">Recharger</button>
+    <button id="export" disabled>Exporter GeoJSON officiel</button>
+    <span id="status" class="status">chargement…</span>
+    <span class="note">Aucune géométrie dessinée à la main. Pas de couche fiction ici.</span>
+  </div>
+  <div class="stage">
+    <div class="wrap">
+      <img id="bg" alt="Cadastre officiel swisstopo">
+      <svg id="svg" viewBox="0 0 1600 1000" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <div><span class="swatch" style="background:#ff9e2c"></span>routes/chemins officiels swissTLM3D</div>
+        <div><span class="swatch" style="background:#e6223b"></span>voies ferroviaires officielles swissTLM3D</div>
+        <div><span class="swatch" style="background:#3f88ff;height:10px"></span>ancre gare Le Muids</div>
+        <div>fond = mensuration officielle (AV) swisstopo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { LE_MUIDS, wmsUrl, loadOfficialLayout, geometryToSvgPaths, toScreen } from './src/geo/swisstopo.js';
+
+const W=1600,H=1000,NS='http://www.w3.org/2000/svg';
+const svg=document.querySelector('#svg');
+const bg=document.querySelector('#bg');
+const status=document.querySelector('#status');
+const exportBtn=document.querySelector('#export');
+let official=null;
+
+function node(name,attrs={}){
+  const n=document.createElementNS(NS,name);
+  for(const [k,v] of Object.entries(attrs)) n.setAttribute(k,v);
+  return n;
+}
+
+function draw(){
+  svg.replaceChildren();
+  if(!official) return;
+
+  const showRoads=document.querySelector('#roads').checked;
+  const showRail=document.querySelector('#rail').checked;
+
+  for(const feature of official.features){
+    const layer=feature.properties?._layer || '';
+    const isRail=layer.includes('eisenbahnnetz');
+    const isRoad=layer.includes('strassen');
+    if((isRail&&!showRail)||(isRoad&&!showRoad)) continue;
+    const cls=isRail?'rail':'road';
+    for(const d of geometryToSvgPaths(feature.geometry,LE_MUIDS.bbox,W,H)){
+      svg.appendChild(node('path',{d,class:cls}));
+    }
+  }
+
+  const [sx,sy]=toScreen(LE_MUIDS.station,LE_MUIDS.bbox,W,H);
+  svg.appendChild(node('circle',{cx:sx,cy:sy,r:9,class:'station'}));
+  svg.appendChild(node('line',{x1:sx-14,y1:sy,x2:sx+14,y2:sy,class:'cross'}));
+  svg.appendChild(node('line',{x1:sx,y1:sy-14,x2:sx,y2:sy+14,class:'cross'}));
+}
+
+function loadBackground(){
+  bg.src=wmsUrl(LE_MUIDS.layers.cadastralWms,LE_MUIDS.bbox,W,H);
+  bg.style.display=document.querySelector('#cadastre').checked?'':'none';
+}
+
+async function load(){
+  status.textContent='chargement des données officielles…';
+  status.className='status';
+  exportBtn.disabled=true;
+  loadBackground();
+  try{
+    official=await loadOfficialLayout(LE_MUIDS.bbox);
+    const roads=official.features.filter(f=>(f.properties?._layer||'').includes('strassen')).length;
+    const rails=official.features.filter(f=>(f.properties?._layer||'').includes('eisenbahnnetz')).length;
+    status.textContent=roads+' objets route · '+rails+' objets rail · EPSG:2056';
+    status.className='status good';
+    exportBtn.disabled=false;
+    draw();
+  }catch(err){
+    console.error(err);
+    status.textContent='Erreur GeoAdmin: '+err.message;
+    status.className='status error';
+  }
+}
+
+document.querySelector('#cadastre').addEventListener('change',loadBackground);
+document.querySelector('#roads').addEventListener('change',draw);
+document.querySelector('#rail').addEventListener('change',draw);
+document.querySelector('#reload').addEventListener('click',load);
+
+exportBtn.addEventListener('click',()=>{
+  if(!official)return;
+  const blob=new Blob([JSON.stringify(official,null,2)],{type:'application/geo+json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='le_muids_official_lv95.geojson';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+
+load();
+</script>
+</body>
+</html>
