@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "units": "1 Three.js unit = 1 meter",
+  "version": 2,
+  "units": "1 Three.js unit ~= 1 meter",
   "packs": {
     "kenney-train-kit": {
       "license": "CC0-1.0",
@@ -35,12 +35,33 @@
       "official": "https://kenney.nl/assets/mini-characters",
       "scale_reference": "character-male-a.glb",
       "scale_target": {
-        "height_m": 1.75
+        "height_m": 1.72
       },
       "assets": [
         "character-male-a.glb",
         "character-female-a.glb"
       ]
+    },
+    "quaternius-farm-animal": {
+      "license": "CC0-1.0",
+      "official": "https://quaternius.com/packs/farmanimal.html",
+      "scale_target": {
+        "height_m": 1.5
+      },
+      "assets": [
+        "quaternius-cow.glb"
+      ]
     }
-  }
+  },
+  "procedural": [
+    "terrain",
+    "oval-track",
+    "sleepers",
+    "platform",
+    "fences",
+    "pond",
+    "mountains",
+    "clouds",
+    "station-sign"
+  ]
 }
