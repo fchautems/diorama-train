@@ -59,5 +59,25 @@ Choix pour la suite:
 - swissTLM3D Eisenbahn.
 - WMS swisstopo pour le fond de mensuration officielle.
 
+## Éditeur fiction sur base officielle
+Ajout de `layout-fiction-editor.html` et `data/le_muids_fiction_v01.json`.
+
+Objectif:
+- garder les routes/rails réels exclusivement issus de swisstopo;
+- éditer séparément la couche fictive en LV95;
+- déplacer les points de contrôle à la souris;
+- exporter un JSON fiction propre quand la géométrie est validée.
+
+Couche fictive actuelle:
+- boucle ferroviaire extérieure violette;
+- route intérieure jaune;
+- 4 marqueurs de passages inférieurs bleus;
+- toutes les coordonnées sont en EPSG:2056 / mètres.
+
+Important: cette couche est un **brouillon éditable**, pas une géométrie validée.
+
+## Bâtiments 3D officiels
+GeoAdmin publie également swissBUILDINGS3D en 3D Tiles. Cette piste est retenue pour la phase 3D afin d'éviter de réinventer les volumes des maisons.
+
 ## Prochaine action
-Faire tourner `layout-official.html` après `git pull`, vérifier que le fond AV et les tracés routes/rails sont exacts, puis ajuster la bbox si nécessaire. Ne pas ajouter la couche fiction avant validation du réel.
+Valider d'abord `layout-official.html`, puis ajuster la couche fiction dans `layout-fiction-editor.html`. Une fois les deux couches validées, brancher les coordonnées LV95 dans Three.js et tester l'intégration des bâtiments officiels 3D.
