@@ -201,3 +201,38 @@ Corrections:
 - maisons/arbres limités au plateau;
 - relief non nul dans le statut;
 - voies officielles et bâtiments correctement alignés.
+
+
+## Prototype 3D LV95 v0.5 — géométrie ferroviaire propre
+Objectif: corriger la crédibilité spatiale avant toute nouvelle décoration.
+
+Changements:
+- raccords voie réelle -> boucle remplacés par des transitions cubiques tangentes;
+- la boucle quitte la vraie voie progressivement, garde son axe plus longtemps puis tourne vers la droite;
+- boucle élargie au maximum vers la périphérie du village;
+- suppression du point doublé à la fermeture de la courbe pour éviter une cassure au retour;
+- ajout d'un corridor visuel de ~11.5 m sous la partie fictive du rail pour masquer l'orthophoto sous l'emprise ferroviaire;
+- le corridor n'est PAS appliqué au tronçon réel de la gare;
+- bâtiments et végétation 3D officiels filtrés individuellement quand l'attribut `_batchid` est disponible;
+- suppression automatique des batches situés hors du plateau, sous le socle ou dans le corridor ferroviaire;
+- fallback au masquage du mesh entier si un tileset ne fournit pas `_batchid`;
+- ajout d'un plan de clipping inférieur sur les matériaux 3D officiels;
+- routes/voies officielles désormais coupées géométriquement à la bbox avant rendu: plus de longues lignes qui dépassent très loin hors de la carte;
+- statut enrichi avec le nombre approximatif de maisons/végétation écartées du corridor;
+- l'ancien tracé jaune de route intérieure reste volontairement non rendu;
+- les anciens marqueurs bleus restent cachés.
+
+Critères visés:
+- aucun raccord perpendiculaire à la vraie voie;
+- gare toujours à gauche;
+- boucle essentiellement à droite;
+- pas de rail traversant une maison 3D visible;
+- moins d'arbres/maisons pendant sous le plateau;
+- pas de grandes lignes officielles hors scène.
+
+## Étape suivante après validation v0.5
+Si la géométrie ferroviaire est validée:
+1. reconstruire la route intérieure depuis le graphe des routes officielles;
+2. ajouter uniquement les courts raccords fictifs nécessaires;
+3. construire de vrais passages inférieurs de la Route cantonale;
+4. styliser maisons/végétation vers le rendu miniature.
