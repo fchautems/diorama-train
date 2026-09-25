@@ -23,7 +23,11 @@
 {
   "imports":{
     "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "three/examples/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/",
+    "3d-tiles-renderer":"https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.4.27/build/index.js",
+    "3d-tiles-renderer/core/plugins":"https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.4.27/build/index.core-plugins.js",
+    "3d-tiles-renderer/three/plugins":"https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.4.27/build/index.three-plugins.js"
   }
 }
 </script>
@@ -31,14 +35,16 @@
 <body>
 <div id="app">
   <div class="hud">
-    <strong>Le Muids · prototype 3D géoréférencé v0.1</strong>
-    <small>Base réelle swisstopo en LV95 + couche fictive séparée. C'est volontairement encore un prototype de géométrie, pas le rendu final.</small>
+    <strong>Le Muids · prototype 3D géoréférencé v0.2</strong>
+    <small>Relief swisstopo réel + réseau LV95 + couche fictive + swissBUILDINGS3D optionnel.</small>
     <div class="row">
       <button id="pause">⏸ Train</button>
       <button id="reset">↺ Vue initiale</button>
       <button id="top">⬇ Vue dessus</button>
       <label><input id="real" type="checkbox" checked> réseau réel</label>
       <label><input id="fiction" type="checkbox" checked> fiction</label>
+      <label><input id="terrain" type="checkbox" checked> relief</label>
+      <label><input id="buildings" type="checkbox"> bâtiments 3D</label>
     </div>
     <div class="row">
       <a class="btn" href="./layout-official.html">Plan officiel 2D</a>
@@ -52,6 +58,7 @@
     <div><span class="sw" style="background:#9b7a58"></span>boucle train fictive</div>
     <div><span class="sw" style="background:#d6c9ad"></span>route intérieure fictive</div>
     <div><span class="sw" style="background:#2b72d6"></span>passages inférieurs prévus</div>
+    <div><span class="sw" style="background:#d9c28c"></span>swissBUILDINGS3D</div>
   </div>
 </div>
 <script type="module" src="./src/muids3d/main.js"></script>
