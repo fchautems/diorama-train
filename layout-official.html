@@ -15,7 +15,7 @@
   button,select{background:#292d31;color:#eee;border:1px solid #50555a;border-radius:6px;padding:5px 8px}
   button{cursor:pointer}
   .stage{position:relative;overflow:auto;background:#222}
-  .wrap{position:relative;width:min(100vw,1600px);aspect-ratio:14/9;margin:0 auto;background:#ece9df}
+  .wrap{position:relative;width:min(100vw,1600px);aspect-ratio:505/295;margin:0 auto;background:#ece9df}
   #bg,#svg{position:absolute;inset:0;width:100%;height:100%}
   #bg{object-fit:fill;opacity:.88}
   #svg{overflow:hidden}
@@ -35,7 +35,7 @@
 <div id="app">
   <div class="bar">
     <strong>Le Muids · OFFICIEL</strong>
-    <label><input id="cadastre" type="checkbox" checked> fond AV officiel</label>
+    <label><input id="cadastre" type="checkbox" checked> orthophoto officielle</label>
     <label><input id="roads" type="checkbox" checked> routes swissTLM3D</label>
     <label><input id="rail" type="checkbox" checked> voies swissTLM3D</label>
     <button id="reload">Recharger</button>
@@ -51,7 +51,7 @@
         <div><span class="swatch" style="background:#ff9e2c"></span>routes/chemins officiels swissTLM3D</div>
         <div><span class="swatch" style="background:#e6223b"></span>voies ferroviaires officielles swissTLM3D</div>
         <div><span class="swatch" style="background:#3f88ff;height:10px"></span>ancre gare Le Muids</div>
-        <div>fond = mensuration officielle (AV) swisstopo</div>
+        <div>fond = swissIMAGE / swisstopo</div>
       </div>
     </div>
   </div>
@@ -60,7 +60,7 @@
 <script type="module">
 import { LE_MUIDS, wmsUrl, loadOfficialLayout, geometryToSvgPaths, toScreen } from './src/geo/swisstopo.js';
 
-const W=1600,H=1000,NS='http://www.w3.org/2000/svg';
+const W=1600,H=935,NS='http://www.w3.org/2000/svg';
 const svg=document.querySelector('#svg');
 const bg=document.querySelector('#bg');
 const status=document.querySelector('#status');
@@ -98,7 +98,7 @@ function draw(){
 }
 
 function loadBackground(){
-  bg.src=wmsUrl(LE_MUIDS.layers.cadastralWms,LE_MUIDS.bbox,W,H);
+  bg.src=wmsUrl(LE_MUIDS.layers.orthophotoWms,LE_MUIDS.bbox,W,H);
   bg.style.display=document.querySelector('#cadastre').checked?'':'none';
 }
 
