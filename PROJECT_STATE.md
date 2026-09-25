@@ -147,3 +147,30 @@ Endpoint bâtiments:
 
 ## Prochaine action
 Tester `le-muids-3d.html` avec `bâtiments 3D` activé. Si l'alignement est bon, passer à la stylisation des bâtiments et à la vraie géométrie de tunnels; sinon corriger d'abord le transform ECEF -> local.
+
+
+## Prototype 3D LV95 v0.3 — corrections après retour utilisateur
+Décisions et changements:
+- la boucle ferroviaire n'est plus entièrement fictive;
+- le code détecte la voie swissTLM3D la plus pertinente autour de la gare, recolle les segments officiels connectés, extrait ~360 m autour de la gare puis greffe le reste de la grande boucle fictive dessus;
+- le train circule donc sur un vrai tronçon ferroviaire au passage de la gare puis continue sur la boucle ajoutée;
+- arrêt en gare réintroduit (~4,5 s);
+- les marqueurs bleus de tunnel sont supprimés du rendu normal;
+- l'ancien polygone jaune de route intérieure n'est plus rendu dans la scène 3D: il reste seulement comme donnée de conception tant qu'on ne l'a pas reconstruit proprement depuis les routes officielles;
+- les routes officielles ne sont plus artificiellement abaissées autour de tous les points tunnel: la Route cantonale reste entièrement visible tant qu'un vrai système de tunnel n'est pas construit;
+- swissBUILDINGS3D est maintenant activé par défaut;
+- la couche de végétation officielle swisstopo 3D est ajoutée et activée par défaut;
+- correction du winding du maillage terrain: le dessus texturé du terrain fait désormais face à la caméra et ne doit plus être masqué par le socle brun.
+
+## À tester sur v0.3
+1. vérifier que le train suit bien la vraie voie autour de la gare avant de rejoindre la boucle;
+2. vérifier que les maisons officielles apparaissent et sont correctement alignées;
+3. vérifier que les arbres/végétation apparaissent;
+4. vérifier que la Route cantonale reste continue/visible;
+5. vérifier que le terrain texturé officiel est visible au-dessus du socle brun.
+
+## Prochaine étape
+Après validation visuelle de v0.3:
+- reconstruire automatiquement la route intérieure en s'appuyant d'abord sur les rues officielles, puis ajouter seulement les raccords fictifs nécessaires;
+- construire deux vrais passages inférieurs de la Route cantonale (géométrie + masquage/percement du terrain), sans marqueurs de debug visibles;
+- styliser maisons et végétation vers l'esthétique diorama.
