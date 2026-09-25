@@ -31,8 +31,10 @@ call npm run visual:check
 if errorlevel 1 goto :fail
 
 echo.
-echo OK. Screenshot: test-results\le-muids-qa.png
-start "" "test-results\le-muids-qa.png"
+echo OK. Screenshots:
+echo   test-results\le-muids-perspective.png
+echo   test-results\le-muids-top.png
+start "" "test-results\le-muids-perspective.png"
 pause
 exit /b 0
 
