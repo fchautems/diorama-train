@@ -97,6 +97,8 @@ let buildingsTiles = null;
 let vegetationTiles = null;
 let buildingsInitializing = false;
 let vegetationInitializing = false;
+let buildingVerticalOffset = null;
+let vegetationVerticalOffset = null;
 let activeRailCurve = null;
 let activeRailClearanceCurve = null;
 let loadedBuildingMeshes = 0;
@@ -577,26 +579,15 @@ function buildStationRightRailLoop(official) {
   const stitched = buildStitchedRailPolyline(official);
 
   if (!stitched || stitched.length < 2) {
-    const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
-    return {
-      points: [
-        [LE_MUIDS.station[0], minN + 35],
-        [LE_MUIDS.station[0] + 85, minN + 20],
-        [maxE - 70, minN + 18],
-        [maxE - 14, (minN + maxN) / 2],
-        [maxE - 70, maxN - 18],
-        [LE_MUIDS.station[0] + 85, maxN - 20]
-      ],
-      realSegment: [],
-      realLength: 0,
-      fallback: true
-    };
+    throw new Error('No official railway geometry available near Le Muids station');
   }
 
+  // Keep only a compact real section around the station. The previous 210 m
+  // section forced the return leg diagonally across the central field.
   let realSegment = extractPolylineWindow(
     stitched,
     LE_MUIDS.station,
-    105
+    58
   );
 
   if (realSegment[0][1] > realSegment[realSegment.length - 1][1]) {
@@ -605,64 +596,64 @@ function buildStationRightRailLoop(official) {
 
   const southEnd = realSegment[0];
   const northEnd = realSegment[realSegment.length - 1];
-  const southTangent = unit2(realSegment[0], realSegment[1]);
-  const northTangent = unit2(
+
+  const southRailDir = unit2(realSegment[0], realSegment[1]);
+  const northRailDir = unit2(
     realSegment[realSegment.length - 2],
     realSegment[realSegment.length - 1]
   );
 
   const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
-  const east = maxE - 10;
-  const top = maxN - 12;
-  const bottom = minN + 12;
+  const top = maxN - 14;
+  const bottom = minN + 14;
+  const right = maxE - 14;
+  const leftLoopE = Math.max(
+    LE_MUIDS.station[0] + 62,
+    minE + 125
+  );
   const midN = (minN + maxN) / 2;
 
-  // The first/last fictional points are intentionally well to the east.
-  // The cubic transitions keep the same tangent as the real rail for a
-  // significant distance before the circuit bends towards the village.
-  const northEntry = [
-    Math.max(LE_MUIDS.station[0] + 135, northEnd[0] + 110),
-    Math.min(top, northEnd[1] + 42)
-  ];
-
-  const southEntry = [
-    Math.max(LE_MUIDS.station[0] + 135, southEnd[0] + 110),
-    Math.max(bottom, southEnd[1] - 42)
-  ];
+  // Both exits stay in the direction of the real railway first, then sweep
+  // smoothly towards the outer edge. This prevents a perpendicular/diagonal
+  // shortcut through the field.
+  const northEntry = [leftLoopE, top];
+  const southEntry = [leftLoopE, bottom];
 
   const northTransition = cubicBezierSamples(
     northEnd,
     northEntry,
-    northTangent,
+    northRailDir,
     [1, 0],
-    85,
-    55,
-    12
+    42,
+    36,
+    18
   );
 
+  // This transition is built from the bottom perimeter back into the real
+  // southern track, with the arrival tangent matching the official railway.
   const southTransition = cubicBezierSamples(
     southEntry,
     southEnd,
     [-1, 0],
-    southTangent,
-    55,
-    85,
-    12
+    southRailDir,
+    36,
+    42,
+    18
   );
 
-  // Wide loop around the outside of the village. This route deliberately
-  // favours the periphery; any residual conflicting 3D objects are filtered
-  // by the rail corridor when official tiles load.
+  // Perimeter loop: top edge -> far right -> bottom edge. Keep it outside the
+  // dense village core as much as the current diorama extent allows.
   const outerArc = [
     northEntry,
-    [LE_MUIDS.station[0] + 235, top],
+    [LE_MUIDS.station[0] + 165, top],
     [maxE - 90, top],
-    [maxE - 25, top - 42],
-    [east, midN + 58],
-    [east, midN - 58],
-    [maxE - 25, bottom + 42],
+    [maxE - 35, top - 30],
+    [right, midN + 60],
+    [right, midN],
+    [right, midN - 60],
+    [maxE - 35, bottom + 30],
     [maxE - 90, bottom],
-    [LE_MUIDS.station[0] + 235, bottom],
+    [LE_MUIDS.station[0] + 165, bottom],
     southEntry
   ];
 
@@ -936,6 +927,124 @@ function countLoadedOfficialMeshes(root, kind) {
   }
 }
 
+function percentile(values, p) {
+  if (!values.length) return NaN;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = THREE.MathUtils.clamp(
+    Math.floor((sorted.length - 1) * p),
+    0,
+    sorted.length - 1
+  );
+  return sorted[index];
+}
+
+function estimateOfficialLayerVerticalOffset(root) {
+  const perMesh = [];
+  const world = new THREE.Vector3();
+
+  root?.updateMatrixWorld(true);
+
+  root?.traverse(node => {
+    if (!node.isMesh) return;
+
+    const position = node.geometry?.getAttribute('position');
+    if (!position || position.count < 3) return;
+
+    node.updateWorldMatrix(true, false);
+
+    const deltas = [];
+    const step = Math.max(1, Math.floor(position.count / 450));
+
+    for (let i = 0; i < position.count; i += step) {
+      world.fromBufferAttribute(position, i)
+        .applyMatrix4(node.matrixWorld);
+
+      const e = centerE + world.x;
+      const n = centerN - world.z;
+
+      if (
+        e < sceneMinE || e > sceneMaxE ||
+        n < sceneMinN || n > sceneMaxN
+      ) {
+        continue;
+      }
+
+      deltas.push(
+        groundY(e, n) - world.y
+      );
+    }
+
+    // Highest deltas correspond to the lowest vertices of the object (ground
+    // contacts / trunk bases). They are the useful ones for vertical datum
+    // alignment.
+    if (deltas.length >= 6) {
+      perMesh.push(percentile(deltas, 0.90));
+    }
+  });
+
+  if (!perMesh.length) return null;
+
+  const correction = percentile(perMesh, 0.50);
+  if (!Number.isFinite(correction) || Math.abs(correction) > 150) {
+    return null;
+  }
+
+  return correction;
+}
+
+function applyOfficialLayerVerticalOffset(tiles, offset) {
+  if (!Number.isFinite(offset)) return;
+
+  const translated = new THREE.Matrix4()
+    .makeTranslation(0, offset, 0)
+    .multiply(tiles.userDataBaseMatrix);
+
+  tiles.group.matrix.copy(translated);
+  tiles.group.updateMatrixWorld(true);
+
+  if (tiles.group.matrixWorldInverse) {
+    tiles.group.matrixWorldInverse
+      .copy(tiles.group.matrixWorld)
+      .invert();
+  }
+}
+
+function countRaisedOfficialMeshes(tiles) {
+  if (!tiles) return 0;
+
+  let count = 0;
+  const box = new THREE.Box3();
+  const center = new THREE.Vector3();
+
+  tiles.group.updateMatrixWorld(true);
+
+  tiles.group.traverse(node => {
+    if (!node.isMesh || !node.visible) return;
+
+    box.setFromObject(node);
+    if (box.isEmpty()) return;
+
+    box.getCenter(center);
+
+    const e = centerE + center.x;
+    const n = centerN - center.z;
+
+    if (
+      e < sceneMinE || e > sceneMaxE ||
+      n < sceneMinN || n > sceneMaxN
+    ) {
+      return;
+    }
+
+    const terrain = groundY(e, n);
+    if (box.max.y > terrain + 1.5) {
+      count++;
+    }
+  });
+
+  return count;
+}
+
 async function createOfficialTilesLayer(url, kind, toggle) {
   if (!localFrame) {
     localFrame = await fetchLocalFrame(centerE, centerN);
@@ -961,6 +1070,7 @@ async function createOfficialTilesLayer(url, kind, toggle) {
 
   tiles.group.matrixAutoUpdate = false;
   tiles.group.matrix.copy(ecefToLocal);
+  tiles.userDataBaseMatrix = ecefToLocal.clone();
   tiles.group.updateMatrixWorld(true);
 
   if (tiles.group.matrixWorldInverse) {
@@ -972,6 +1082,26 @@ async function createOfficialTilesLayer(url, kind, toggle) {
   tiles.group.visible = toggle.checked;
 
   tiles.addEventListener('load-model', event => {
+    const offsetKey = kind === 'buildings'
+      ? 'buildingVerticalOffset'
+      : 'vegetationVerticalOffset';
+
+    const currentOffset = kind === 'buildings'
+      ? buildingVerticalOffset
+      : vegetationVerticalOffset;
+
+    if (currentOffset === null) {
+      const estimated = estimateOfficialLayerVerticalOffset(event.scene);
+
+      if (Number.isFinite(estimated)) {
+        if (kind === 'buildings') buildingVerticalOffset = estimated;
+        else vegetationVerticalOffset = estimated;
+
+        applyOfficialLayerVerticalOffset(tiles, estimated);
+        event.scene?.updateMatrixWorld(true);
+      }
+    }
+
     event.scene?.traverse(node => {
       if (!node.isMesh) return;
 
@@ -1337,22 +1467,23 @@ function updateStatus() {
   status.textContent =
     'Prêt · ' +
     hybridRail.realLength.toFixed(0) +
-    ' m de vraie voie · raccords ' +
+    ' m vraie voie · raccords ' +
     joinAngles.north.toFixed(1) +
     '° / ' +
     joinAngles.south.toFixed(1) +
     '° · relief ' +
     relief +
-    ' m · maisons meshes ' +
-    loadedBuildingMeshes +
-    ' · arbres meshes ' +
-    loadedVegetationMeshes;
+    ' m · visibles 3D ' +
+    countRaisedOfficialMeshes(buildingsTiles) +
+    ' maisons / ' +
+    countRaisedOfficialMeshes(vegetationTiles) +
+    ' arbres';
 }
 
 function publishQaState() {
   window.__DIORAMA_QA__ = {
     ready: true,
-    version: '0.5.1',
+    version: '0.5.2',
     realRailLengthM: Number(hybridRail.realLength.toFixed(1)),
     joinAnglesDeg: {
       north: Number(joinAngles.north.toFixed(2)),
@@ -1362,6 +1493,10 @@ function publishQaState() {
     vegetationChecked: vegetationToggle.checked,
     loadedBuildingMeshes,
     loadedVegetationMeshes,
+    raisedBuildingMeshes: countRaisedOfficialMeshes(buildingsTiles),
+    raisedVegetationMeshes: countRaisedOfficialMeshes(vegetationTiles),
+    buildingVerticalOffsetM: buildingVerticalOffset,
+    vegetationVerticalOffsetM: vegetationVerticalOffset,
     reliefM: Number(relief),
     sceneSizeM: [
       sceneMaxE - sceneMinE,
