@@ -990,6 +990,7 @@ async function createOfficialTilesLayer(url, kind, toggle) {
     countLoadedOfficialMeshes(event.scene, kind);
 
     if (typeof updateStatus === 'function') updateStatus();
+    if (typeof publishQaState === 'function') publishQaState();
   });
 
   tiles.addEventListener('load-error', event => {
