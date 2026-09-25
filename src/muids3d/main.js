@@ -226,7 +226,7 @@ function buildOfficialNetwork(official){
       if(points.length<2)continue;
       const mesh=tubeFromPoints(
         points,
-        isRail?.52:.38,
+        isRail ? .52 : .38,
         isRail?0x34383b:0x5f6569,
         isRail?1.15:.85,
         false,
