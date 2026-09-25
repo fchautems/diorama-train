@@ -24,21 +24,38 @@ function makeSnakeGrid(bbox, cols, rows) {
 }
 
 async function fetchProfile(points) {
-  const body = new URLSearchParams({
-    geom: JSON.stringify({ type: 'LineString', coordinates: points }),
+  const query = new URLSearchParams({
+    geom: JSON.stringify({
+      type: 'LineString',
+      coordinates: points
+    }),
     sr: '2056',
     nb_points: String(points.length),
     distinct_points: 'True'
   });
 
-  const response = await fetch('https://api3.geo.admin.ch/rest/services/profile.json', {
-    method: 'POST',
-    mode: 'cors',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    body
-  });
-  if (!response.ok) throw new Error('profile HTTP ' + response.status);
+  const response = await fetch(
+    'https://api3.geo.admin.ch/rest/services/profile.json?' +
+      query.toString(),
+    { mode: 'cors' }
+  );
+
+  if (!response.ok) {
+    throw new Error('profile HTTP ' + response.status);
+  }
+
   return response.json();
+}
+
+async function fetchGridRows(grid) {
+  const rows = [];
+
+  for (const row of grid) {
+    const samples = await fetchProfile(row);
+    rows.push(samples);
+  }
+
+  return rows;
 }
 
 function nearestHeight(samples, e, n) {
@@ -56,26 +73,26 @@ function nearestHeight(samples, e, n) {
   return Number(best?.alts?.COMB ?? best?.alts?.DTM2 ?? best?.alts?.DTM25 ?? 0);
 }
 
-export async function loadTerrainGrid(bbox, stationHeight, cols = 41, rows = 31) {
-  const { grid, snake } = makeSnakeGrid(bbox, cols, rows);
-  const samples = await fetchProfile(snake);
-  const sampleMap = new Map();
+export async function loadTerrainGrid(bbox, stationHeight, cols = 17, rows = 11) {
+  const { grid } = makeSnakeGrid(bbox, cols, rows);
 
-  for (const sample of samples) {
-    const e = Number(sample.easting);
-    const n = Number(sample.northing);
-    const h = Number(sample?.alts?.COMB ?? sample?.alts?.DTM2 ?? sample?.alts?.DTM25);
-    if (Number.isFinite(e) && Number.isFinite(n) && Number.isFinite(h)) {
-      sampleMap.set(key(e, n), h);
-    }
+  // Query each horizontal row separately. This is more reliable than sending
+  // one long zig-zag line and also preserves a regular terrain grid.
+  const rowSamples = await fetchGridRows(grid);
+  const allSamples = rowSamples.flat();
+
+  const heights = grid.map((row, rowIndex) => {
+    const samples = rowSamples[rowIndex];
+
+    return row.map(([e, n]) => {
+      return nearestHeight(samples, e, n);
+    });
+  });
+
+  const flat = heights.flat().filter(Number.isFinite);
+  if (!flat.length) {
+    throw new Error('No terrain heights returned by GeoAdmin');
   }
-
-  const heights = grid.map(row =>
-    row.map(([e, n]) => {
-      const direct = sampleMap.get(key(e, n));
-      return Number.isFinite(direct) ? direct : nearestHeight(samples, e, n);
-    })
-  );
 
   return {
     bbox,
@@ -84,8 +101,8 @@ export async function loadTerrainGrid(bbox, stationHeight, cols = 41, rows = 31)
     grid,
     heights,
     stationHeight,
-    minHeight: Math.min(...heights.flat()),
-    maxHeight: Math.max(...heights.flat())
+    minHeight: Math.min(...flat),
+    maxHeight: Math.max(...flat)
   };
 }
 
