@@ -165,15 +165,17 @@ export async function buildTerrainMesh(model, centerE, centerN, textureUrl, rend
 
   const width = maxE - minE;
   const depth = maxN - minN;
-  const baseY = model.minHeight - model.stationHeight - 22;
-  const baseHeight = Math.max(18, -baseY + 2);
+  const minRelativeHeight = model.minHeight - model.stationHeight;
+  const baseTop = minRelativeHeight - 2;
+  const baseHeight = 24;
+  const baseBottom = baseTop - baseHeight;
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(width, baseHeight, depth),
     new THREE.MeshStandardMaterial({ color: 0x705b45, roughness: 1 })
   );
   base.position.set(
     (minE + maxE) / 2 - centerE,
-    baseY - baseHeight / 2 + 2,
+    (baseTop + baseBottom) / 2,
     -((minN + maxN) / 2 - centerN)
   );
   base.receiveShadow = true;
