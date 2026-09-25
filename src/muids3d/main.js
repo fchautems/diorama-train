@@ -1009,6 +1009,41 @@ function applyOfficialLayerVerticalOffset(tiles, offset) {
   }
 }
 
+function ensureOfficialLayerAligned(tiles, kind) {
+  if (!tiles) return null;
+
+  const existing = kind === 'buildings'
+    ? buildingVerticalOffset
+    : vegetationVerticalOffset;
+
+  if (existing !== null) return existing;
+
+  const estimated = estimateOfficialLayerVerticalOffset(tiles.group);
+  if (!Number.isFinite(estimated)) return null;
+
+  if (kind === 'buildings') buildingVerticalOffset = estimated;
+  else vegetationVerticalOffset = estimated;
+
+  applyOfficialLayerVerticalOffset(tiles, estimated);
+  return estimated;
+}
+
+function officialLayerBoundsSummary(tiles) {
+  if (!tiles) return null;
+
+  tiles.group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(tiles.group);
+  if (box.isEmpty()) return null;
+
+  const center = box.getCenter(new THREE.Vector3());
+  return {
+    minY: Number(box.min.y.toFixed(1)),
+    maxY: Number(box.max.y.toFixed(1)),
+    centerX: Number(center.x.toFixed(1)),
+    centerZ: Number(center.z.toFixed(1))
+  };
+}
+
 function countRaisedOfficialMeshes(tiles) {
   if (!tiles) return 0;
 
@@ -1464,6 +1499,9 @@ const relief = (
 ).toFixed(1);
 
 function updateStatus() {
+  ensureOfficialLayerAligned(buildingsTiles, 'buildings');
+  ensureOfficialLayerAligned(vegetationTiles, 'vegetation');
+
   status.textContent =
     'Prêt · ' +
     hybridRail.realLength.toFixed(0) +
@@ -1497,6 +1535,8 @@ function publishQaState() {
     raisedVegetationMeshes: countRaisedOfficialMeshes(vegetationTiles),
     buildingVerticalOffsetM: buildingVerticalOffset,
     vegetationVerticalOffsetM: vegetationVerticalOffset,
+    buildingBounds: officialLayerBoundsSummary(buildingsTiles),
+    vegetationBounds: officialLayerBoundsSummary(vegetationTiles),
     reliefM: Number(relief),
     sceneSizeM: [
       sceneMaxE - sceneMinE,
