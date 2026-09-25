@@ -2,64 +2,58 @@
 
 Dernière mise à jour: 2026-09-25
 
-## État vérifié
-- Dépôt `fchautems/diorama-train`.
-- Runtime: Three.js/WebGL dans le navigateur.
-- Direction: diorama ferroviaire low-poly / maquette miniature.
-- v0.3 a été testée visuellement par l'utilisateur.
-- Retours v0.3: couleurs trop délavées, enclos des vaches partiellement sur la voie et visuellement ouvert, vaches semblant faire du sur-place, z-fighting/superposition au centre du village, gros reliefs/rochers peu convaincants, train arrêté un peu trop tôt, personnage de gare mal orienté/statiquement coincé.
+## État actuel
+- Runtime 3D existant: Three.js/WebGL.
+- La v0.4 du diorama animé reste disponible et inchangée.
+- Nouvelle direction validée: reconstruire un Le Muids schématisé mais structurellement fidèle avant de refaire la scène 3D.
+- Le générateur d'images n'est plus utilisé pour décider de la géométrie.
 
-## Changements v0.4
-- Rendu:
-  - passage de ACES Filmic à Neutral Tone Mapping ;
-  - exposition jour portée à 1.08 ;
-  - ajout d'une lumière ambiante douce ;
-  - rééquilibrage Hemisphere/Directional Light ;
-  - terrain légèrement plus saturé ;
-  - matériaux Nature Kit légèrement rehaussés en saturation/luminosité avec plancher de luminosité pour éviter les végétaux presque noirs.
-- Centre du village:
-  - suppression de la grande place ovale ;
-  - chemins réduits à 0.88 m de large ;
-  - faible décalage vertical différent par chemin pour supprimer le z-fighting aux croisements.
-- Pâturage:
-  - déplacement vers `x=23, z=0.6`, entièrement à l'intérieur de la boucle ;
-  - dimensions ~9 × 7.2 m ;
-  - clôture reconstruite avec quatre rails continus et poteaux réguliers, donc visuellement fermée ;
-  - trajectoire des vaches déplacée dans ce nouvel enclos.
-- Vaches:
-  - priorité explicite au clip `walk` ;
-  - mixer accéléré à 1.15× ;
-  - vitesse de déplacement environ doublée pour rendre le mouvement perceptible.
-- Paysage:
-  - suppression des gros reliefs arrondis ;
-  - réduction forte de la taille/nombre des rochers ;
-  - ajout d'une ligne d'arbres de fond à la place ;
-  - végétation réduite à ~30 arbres, ~24 buissons et ~82 touffes d'herbe pour alléger la scène.
-- Gare:
-  - cible d'arrêt du train avancée de ~4.2 m pour mieux aligner la locomotive sur le quai ;
-  - personnage statique supprimé ;
-  - ajout d'un personnage qui fait un petit aller-retour sur le quai.
-- Jour/nuit ajusté au nouveau schéma d'éclairage.
-- `START_DIORAMA.bat` reste le point d'entrée.
+## Nouveau pipeline cartographique
+Une géométrie 2D unique devient la source de vérité pour la future 3D:
 
-## Choix technique maintenu
-Pas de moteur physique ni de navmesh à ce stade. Les personnages et animaux suivent des splines contrôlées. C'est adapté à un diorama observé de l'extérieur et évite la complexité d'une navigation dynamique tant qu'elle n'est pas nécessaire.
+`référence aérienne -> tracé vectoriel -> data/le_muids_layout_v01.json -> vue debug 2D -> future scène Three.js`
 
-## Assets
-Aucun nouvel asset externe ajouté en v0.4. Les assets existants restent ceux documentés dans `assets/ATTRIBUTION.md`.
+### Couche réelle
+Le fichier `data/le_muids_layout_v01.json` contient, en coordonnées pixels de la capture de référence (1412×792):
+- Route cantonale;
+- Chemin de la Pétoilière / accès gare;
+- Chemin de la Grange;
+- Rue des Jotins;
+- Chemin des Reliantes;
+- Rue de l'Ancienne Poste;
+- portion de voie ferrée réelle à la gare;
+- premiers contours de bâtiments;
+- premiers contours de jardins/parcelles visibles.
 
-## À vérifier visuellement
-- Saturation/couleurs: plus vives sans être criardes.
-- Absence de clignotement au centre du village.
-- Enclos entièrement fermé et nettement séparé de la voie.
-- Déplacement visible des vaches.
-- Arrêt de la locomotive correctement aligné au quai.
-- Personnage de quai correctement orienté pendant son aller-retour.
-- Fond végétal plus naturel que les anciens gros blocs.
-- Aucun arbre/buisson/herbe sur les rails.
+Ces tracés sont issus directement de la capture satellite fournie par l'utilisateur. Ils ne sont pas générés par modèle d'image.
 
-## Bâtiments
-Les maisons actuelles restent des modèles complets du Kenney City Kit (Suburban). Une future passe peut tester Kenney Modular Buildings pour introduire une gare et des maisons plus variées sans changer de direction artistique.
+### Couche fiction diorama
+Séparée explicitement de la géométrie réelle:
+- `rail_loop`: future boucle ferroviaire extérieure;
+- `inner_road_loop`: route intérieure partant de la gare, reprenant la Pétoilière puis bouclant dans le village et le long des voies;
+- quatre passages inférieurs où la Route cantonale doit descendre sous:
+  - le train au nord;
+  - la route intérieure au nord;
+  - la route intérieure au sud;
+  - le train au sud.
+
+En 3D, la Route cantonale sera abaissée sur Y dans ces zones; les deux boucles restent au niveau du terrain.
+
+## Outil de validation
+- `layout-debug.html` affiche exactement les données du JSON.
+- La capture satellite n'est pas commitée dans le dépôt.
+- L'utilisateur peut charger localement sa capture dans l'outil et superposer:
+  - réel;
+  - fiction;
+  - bâtiments/jardins;
+  - opacité du fond.
+- Cela permet de corriger la géométrie sans redessiner un SVG/PNG à chaque itération.
+
+## État de précision v0.1
+- Les grandes routes et la topologie sont tracées.
+- Les bâtiments/jardins sont une première passe à valider et à affiner.
+- Les boucles fictives sont une proposition structurelle; elles doivent être validées avant conversion 3D.
+- Le but immédiat n'est pas l'esthétique mais l'alignement géométrique.
 
 ## Prochaine action
-Lancer v0.4 via `START_DIORAMA.bat` et faire une nouvelle passe visuelle ciblée. Ne pas complexifier davantage avant d'avoir vérifié ces corrections.
+Faire valider la superposition v0.1 sur la capture satellite. Corriger les points de contrôle jusqu'à accord sur la structure, puis brancher ce même JSON comme source de coordonnées X/Z dans Three.js.
