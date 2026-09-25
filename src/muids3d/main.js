@@ -98,6 +98,7 @@ let vegetationTiles = null;
 let buildingsInitializing = false;
 let vegetationInitializing = false;
 let activeRailCurve = null;
+let activeRailClearanceCurve = null;
 let corridorRemovedBuildings = 0;
 let corridorRemovedVegetation = 0;
 
@@ -670,7 +671,7 @@ function buildStationRightRailLoop(official) {
       ...realSegment,
       ...northTransition,
       ...outerArc.slice(1),
-      ...southTransition
+      ...southTransition.slice(0, -1)
     ],
     realSegment,
     realLength: polylineLength(realSegment),
@@ -906,7 +907,7 @@ function shouldHideMeshFromScene(mesh, kind) {
     return true;
   }
 
-  if (!activeRailCurve) return false;
+  if (!activeRailClearanceCurve) return false;
 
   // Keep the real-station section intact visually; clearance filtering is
   // mainly for the added loop through the diorama.
@@ -918,7 +919,7 @@ function shouldHideMeshFromScene(mesh, kind) {
 
   return railDistance2D(
     center,
-    activeRailCurve
+    activeRailClearanceCurve
   ) < corridor + footprintRadius;
 }
 
@@ -1128,12 +1129,16 @@ const hybridRail = buildStationRightRailLoop(
   official
 );
 
+const fictionalRailPoints = hybridRail.points.slice(
+  Math.max(0, hybridRail.realSegment.length - 1)
+);
+
 const railClearance = makeRibbon(
-  hybridRail.points,
+  fictionalRailPoints,
   11.5,
   0x8a7a61,
   0.45,
-  true
+  false
 );
 railClearance.mesh.material.roughness = 1;
 railClearance.mesh.receiveShadow = true;
@@ -1144,6 +1149,11 @@ const railCurve = addTrack(
   groups.fiction
 );
 activeRailCurve = railCurve;
+activeRailClearanceCurve = curveFromLV95(
+  fictionalRailPoints,
+  0.45,
+  false
+);
 
 // The former yellow inner-road polygon is intentionally NOT rendered here.
 // It stays in the design data until we rebuild it from the official road
