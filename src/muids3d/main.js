@@ -1018,11 +1018,30 @@ function ensureOfficialLayerAligned(tiles, kind) {
 
   if (existing !== null) return existing;
 
+  // swissBUILDINGS3D and vegetation 3D share the same geodetic vertical datum.
+  // Once buildings give us a stable local correction, reuse it for vegetation
+  // instead of trying to infer a value from very large tree tiles that extend
+  // well outside the compact diorama bbox.
+  if (
+    kind === 'vegetation' &&
+    Number.isFinite(buildingVerticalOffset)
+  ) {
+    vegetationVerticalOffset = buildingVerticalOffset;
+    applyOfficialLayerVerticalOffset(
+      tiles,
+      vegetationVerticalOffset
+    );
+    return vegetationVerticalOffset;
+  }
+
   const estimated = estimateOfficialLayerVerticalOffset(tiles.group);
   if (!Number.isFinite(estimated)) return null;
 
-  if (kind === 'buildings') buildingVerticalOffset = estimated;
-  else vegetationVerticalOffset = estimated;
+  if (kind === 'buildings') {
+    buildingVerticalOffset = estimated;
+  } else {
+    vegetationVerticalOffset = estimated;
+  }
 
   applyOfficialLayerVerticalOffset(tiles, estimated);
   return estimated;
