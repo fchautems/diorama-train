@@ -12,7 +12,7 @@ Le lanceur démarre automatiquement un petit serveur local sur le port 8000 puis
 
 Fermer la fenêtre du serveur pour arrêter le diorama.
 
-## Prototype Le Muids géoréférencé
+## Prototype Le Muids géoréférencé v0.2
 
 Une nouvelle branche fonctionnelle du projet utilise les vraies coordonnées LV95 de swisstopo.
 
@@ -22,11 +22,14 @@ Pages utiles :
 - `layout-fiction-editor.html` — édition de notre boucle ferroviaire, route intérieure et passages inférieurs sur la base officielle ;
 - `le-muids-3d.html` — premier prototype Three.js qui projette les données LV95 dans une scène locale, affiche le fond officiel, les routes/voies réelles, la couche fictive et un train animé.
 
-Le prototype 3D est volontairement une **preuve géométrique** :
-- terrain plat pour l'instant ;
-- pas encore de swissBUILDINGS3D intégré ;
-- pas encore de vrais tunnels creusés ;
-- les coordonnées réelles et fictives sont déjà en mètres et prêtes pour les prochaines étapes.
+Le prototype 3D utilise maintenant un **relief réel** :
+- maillage terrain construit depuis le service d'altitude swisstopo, en LV95 ;
+- texture officielle AV projetée sur le relief ;
+- routes/rails réels suivent le terrain ;
+- la Route cantonale est abaissée autour des 4 passages inférieurs prévus ;
+- swissBUILDINGS3D peut être activé depuis l'interface ;
+- les bâtiments officiels sont reprojetés d'ECEF vers le repère local centré sur la gare ;
+- les tunnels ne sont pas encore réellement creusés dans le maillage, mais la géométrie routière descend déjà sous les croisements.
 
 ## Scène actuelle — v0.4
 
