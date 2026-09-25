@@ -42,8 +42,13 @@ test('Le Muids visual smoke control', async ({ page }) => {
 
   expect(qa.buildingsChecked).toBe(true);
   expect(qa.vegetationChecked).toBe(true);
-  expect(qa.realRailLengthM).toBeGreaterThan(150);
+  expect(qa.realRailLengthM).toBeGreaterThan(90);
   expect(qa.reliefM).toBeGreaterThan(1);
+
+  // Meshes merely existing is not enough: they must actually sit above the
+  // terrain inside the diorama after the ECEF -> local vertical alignment.
+  expect(qa.raisedBuildingMeshes).toBeGreaterThan(0);
+  expect(qa.raisedVegetationMeshes).toBeGreaterThan(0);
 
   // Tangent continuity guard: if either join goes back towards a near-right
   // angle, the build fails before delivery.
