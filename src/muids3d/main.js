@@ -790,7 +790,8 @@ try {
   console.error('Local frame failed', error);
 
   localFrame = {
-    groundHeight: 0,
+    // Published station altitude; only used if the live height service fails.
+    groundHeight: 715,
     exact: false
   };
 }
