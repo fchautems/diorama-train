@@ -99,8 +99,8 @@ let buildingsInitializing = false;
 let vegetationInitializing = false;
 let activeRailCurve = null;
 let activeRailClearanceCurve = null;
-let corridorRemovedBuildings = 0;
-let corridorRemovedVegetation = 0;
+let loadedBuildingMeshes = 0;
+let loadedVegetationMeshes = 0;
 
 const dracoLoader = new DRACOLoader();
 dracoLoader.setDecoderPath(
@@ -679,8 +679,55 @@ function buildStationRightRailLoop(official) {
   };
 }
 
+function angleDeg2D(v1, v2) {
+  const a = new THREE.Vector2(v1[0], v1[1]).normalize();
+  const b = new THREE.Vector2(v2[0], v2[1]).normalize();
+  const dot = THREE.MathUtils.clamp(a.dot(b), -1, 1);
+  return THREE.MathUtils.radToDeg(Math.acos(dot));
+}
+
+function railJoinAngles(hybridRail) {
+  const n = hybridRail.realSegment.length;
+  if (n < 2 || hybridRail.points.length <= n + 1) {
+    return { north: 180, south: 180 };
+  }
+
+  const realNorthA = hybridRail.realSegment[n - 2];
+  const realNorthB = hybridRail.realSegment[n - 1];
+  const firstFiction = hybridRail.points[n];
+
+  const realSouthA = hybridRail.realSegment[0];
+  const realSouthB = hybridRail.realSegment[1];
+  const lastFiction = hybridRail.points[hybridRail.points.length - 1];
+
+  const northReal = [
+    realNorthB[0] - realNorthA[0],
+    realNorthB[1] - realNorthA[1]
+  ];
+  const northOut = [
+    firstFiction[0] - realNorthB[0],
+    firstFiction[1] - realNorthB[1]
+  ];
+
+  // At the south join, the closed loop arrives from lastFiction to realSouthA,
+  // then continues along the official line towards realSouthB.
+  const southIn = [
+    realSouthA[0] - lastFiction[0],
+    realSouthA[1] - lastFiction[1]
+  ];
+  const southReal = [
+    realSouthB[0] - realSouthA[0],
+    realSouthB[1] - realSouthA[1]
+  ];
+
+  return {
+    north: angleDeg2D(northReal, northOut),
+    south: angleDeg2D(southIn, southReal)
+  };
+}
+
 function addSleepers(curve, count, width, group) {
-  const geo = new THREE.BoxGeometry(width, 0.16, 0.34);
+  const geo = new THREE.BoxGeometry(width, 0.18, 0.42);
   const sleeperMat = mat(0x8b6340, 0.95);
   const inst = new THREE.InstancedMesh(geo, sleeperMat, count);
   inst.castShadow = true;
@@ -728,7 +775,7 @@ function addTrack(points, group) {
     );
 
     const rail = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 480, 0.085, 8, true),
+      new THREE.TubeGeometry(curve, 480, 0.14, 8, true),
       mat(0x4e5357, 0.35, 0.65)
     );
 
@@ -876,157 +923,17 @@ function applySceneClipping(material) {
   }
 }
 
-function meshWorldBounds(mesh) {
-  mesh.updateWorldMatrix(true, false);
-  return new THREE.Box3().setFromObject(mesh);
-}
-
-function boxShouldBeRemoved(box, kind) {
-  if (box.isEmpty()) return false;
-
-  const center = box.getCenter(new THREE.Vector3());
-  const size = box.getSize(new THREE.Vector3());
-
-  const minX = sceneMinE - centerE;
-  const maxX = sceneMaxE - centerE;
-  const minZ = -(sceneMaxN - centerN);
-  const maxZ = -(sceneMinN - centerN);
-  const bottomCut = terrainModel
-    ? terrainModel.minHeight - terrainModel.stationHeight - 3
-    : -15;
-
-  if (
-    center.x < minX - 4 ||
-    center.x > maxX + 4 ||
-    center.z < minZ - 4 ||
-    center.z > maxZ + 4 ||
-    box.max.y < bottomCut
-  ) {
-    return true;
-  }
-
-  if (!activeRailClearanceCurve) return false;
-
-  const corridor = kind === 'buildings' ? 11 : 8;
-  const footprintRadius = Math.min(
-    12,
-    0.5 * Math.hypot(size.x, size.z)
-  );
-
-  return railDistance2D(
-    center,
-    activeRailClearanceCurve
-  ) < corridor + footprintRadius;
-}
-
-function filterBatchedMesh(mesh, kind) {
-  const geometry = mesh.geometry;
-  const batch = geometry.getAttribute('_batchid');
-  const position = geometry.getAttribute('position');
-
-  if (!batch || !position || batch.count !== position.count) {
-    return null;
-  }
-
-  mesh.updateWorldMatrix(true, false);
-
-  const batchBoxes = new Map();
-  const p = new THREE.Vector3();
-
-  for (let i = 0; i < position.count; i++) {
-    const id = Math.round(batch.getX(i));
-    let box = batchBoxes.get(id);
-
-    if (!box) {
-      box = new THREE.Box3();
-      batchBoxes.set(id, box);
-    }
-
-    p.fromBufferAttribute(position, i)
-      .applyMatrix4(mesh.matrixWorld);
-
-    box.expandByPoint(p);
-  }
-
-  const removeIds = new Set();
-
-  for (const [id, box] of batchBoxes) {
-    if (boxShouldBeRemoved(box, kind)) {
-      removeIds.add(id);
-    }
-  }
-
-  if (!removeIds.size) {
-    return 0;
-  }
-
-  const sourceIndex = geometry.index;
-  const kept = [];
-
-  if (sourceIndex) {
-    for (let i = 0; i + 2 < sourceIndex.count; i += 3) {
-      const ia = sourceIndex.getX(i);
-      const ib = sourceIndex.getX(i + 1);
-      const ic = sourceIndex.getX(i + 2);
-      const id = Math.round(batch.getX(ia));
-
-      if (!removeIds.has(id)) {
-        kept.push(ia, ib, ic);
-      }
-    }
-  } else {
-    for (let i = 0; i + 2 < position.count; i += 3) {
-      const id = Math.round(batch.getX(i));
-
-      if (!removeIds.has(id)) {
-        kept.push(i, i + 1, i + 2);
-      }
-    }
-  }
-
-  geometry.setIndex(kept);
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-
-  if (!kept.length) {
-    mesh.visible = false;
-  }
-
-  return removeIds.size;
-}
-
-function filterLoadedOfficialScene(root, kind) {
-  root?.updateMatrixWorld(true);
-
+function countLoadedOfficialMeshes(root, kind) {
+  let count = 0;
   root?.traverse(node => {
-    if (!node.isMesh) return;
-
-    const removedBatches = filterBatchedMesh(
-      node,
-      kind
-    );
-
-    if (removedBatches !== null) {
-      if (kind === 'buildings') {
-        corridorRemovedBuildings += removedBatches;
-      } else {
-        corridorRemovedVegetation += removedBatches;
-      }
-      return;
-    }
-
-    const box = meshWorldBounds(node);
-
-    if (boxShouldBeRemoved(box, kind)) {
-      node.visible = false;
-
-      if (kind === 'buildings') {
-        corridorRemovedBuildings++;
-      } else {
-        corridorRemovedVegetation++;
-      }
-    }
+    if (node.isMesh) count++;
   });
+
+  if (kind === 'buildings') {
+    loadedBuildingMeshes += count;
+  } else {
+    loadedVegetationMeshes += count;
+  }
 }
 
 async function createOfficialTilesLayer(url, kind, toggle) {
@@ -1077,14 +984,12 @@ async function createOfficialTilesLayer(url, kind, toggle) {
       node.receiveShadow = true;
     });
 
-    filterLoadedOfficialScene(
-      event.scene,
-      kind
-    );
+    // IMPORTANT: do not delete/hide official buildings or vegetation here.
+    // v0.5 proved that batch-level removal was too destructive. The railway
+    // must avoid the village geometrically; official context stays intact.
+    countLoadedOfficialMeshes(event.scene, kind);
 
-    if (typeof updateStatus === 'function') {
-      updateStatus();
-    }
+    if (typeof updateStatus === 'function') updateStatus();
   });
 
   tiles.addEventListener('load-error', event => {
@@ -1213,9 +1118,8 @@ const counts = buildOfficialNetwork(official);
 // v0.4: the station is deliberately the LEFT anchor of the scene.
 // A real swissTLM3D rail section around Le Muids station is preserved,
 // then the added circuit loops only through the village/right-hand side.
-const hybridRail = buildStationRightRailLoop(
-  official
-);
+const hybridRail = buildStationRightRailLoop(official);
+const joinAngles = railJoinAngles(hybridRail);
 
 const fictionalRailPoints = hybridRail.points.slice(
   Math.max(0, hybridRail.realSegment.length - 1)
@@ -1432,20 +1336,47 @@ function updateStatus() {
   status.textContent =
     'Prêt · ' +
     hybridRail.realLength.toFixed(0) +
-    ' m de vraie voie · relief ' +
+    ' m de vraie voie · raccords ' +
+    joinAngles.north.toFixed(1) +
+    '° / ' +
+    joinAngles.south.toFixed(1) +
+    '° · relief ' +
     relief +
-    ' m · cadrage village 505×295 m · ' +
-    counts.roads +
-    ' routes · ' +
-    counts.rails +
-    ' voies · objets écartés du rail: ' +
-    corridorRemovedBuildings +
-    ' maisons / ' +
-    corridorRemovedVegetation +
-    ' végétation';
+    ' m · maisons meshes ' +
+    loadedBuildingMeshes +
+    ' · arbres meshes ' +
+    loadedVegetationMeshes;
+}
+
+function publishQaState() {
+  window.__DIORAMA_QA__ = {
+    ready: true,
+    version: '0.5.1',
+    realRailLengthM: Number(hybridRail.realLength.toFixed(1)),
+    joinAnglesDeg: {
+      north: Number(joinAngles.north.toFixed(2)),
+      south: Number(joinAngles.south.toFixed(2))
+    },
+    buildingsChecked: buildingsToggle.checked,
+    vegetationChecked: vegetationToggle.checked,
+    loadedBuildingMeshes,
+    loadedVegetationMeshes,
+    reliefM: Number(relief),
+    sceneSizeM: [
+      sceneMaxE - sceneMinE,
+      sceneMaxN - sceneMinN
+    ]
+  };
 }
 
 updateStatus();
+publishQaState();
+
+// Give remote 3D tiles a little time to arrive, then refresh the QA counters.
+setTimeout(() => {
+  updateStatus();
+  publishQaState();
+}, 8000);
 
 const clock = new THREE.Clock();
 
@@ -1496,6 +1427,16 @@ function animate() {
   }
 
   renderer.render(scene, camera);
+}
+
+if (new URLSearchParams(location.search).get('qa') === '1') {
+  camera.position.set(
+    sceneCenter.x,
+    720,
+    sceneCenter.z + 0.01
+  );
+  controls.target.copy(sceneCenter);
+  controls.update();
 }
 
 animate();
