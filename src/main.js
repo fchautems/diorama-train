@@ -13,8 +13,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.02;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.08;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -59,10 +59,13 @@ controls.minDistance = 12;
 controls.maxDistance = 105;
 controls.maxPolarAngle = Math.PI * 0.49;
 
-const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x536146, 2.25);
+const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambient);
+
+const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x536146, 1.75);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xffefd0, 4.1);
+const sun = new THREE.DirectionalLight(0xffefd0, 3.35);
 sun.position.set(-23, 37, 24);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -86,7 +89,7 @@ const WORLD_RZ = 34;
 
 const turf = new THREE.Mesh(
   new THREE.CylinderGeometry(1, 1, 1.2, 96),
-  material(0x82ad65, 1)
+  material(0x73a958, 1)
 );
 turf.scale.set(WORLD_RX, 1, WORLD_RZ);
 turf.position.y = -0.48;
@@ -226,16 +229,6 @@ stationPlatform.castShadow = true;
 stationPlatform.receiveShadow = true;
 world.add(stationPlatform);
 
-const plaza = new THREE.Mesh(
-  new THREE.CircleGeometry(7.6, 48),
-  material(0xcdbb97, 1)
-);
-plaza.rotation.x = -Math.PI / 2;
-plaza.scale.set(1.25, 0.8, 1);
-plaza.position.set(-0.5, 0.12, -1.0);
-plaza.receiveShadow = true;
-world.add(plaza);
-
 const pedestrianRoutes = [
   new THREE.CatmullRomCurve3([
     new THREE.Vector3(-9.5, 0.17, -6.5),
@@ -267,28 +260,18 @@ const pedestrianRoutes = [
   ], false, 'catmullrom', 0.2)
 ];
 
-for (const route of pedestrianRoutes) {
-  world.add(makeRibbon(route, 0.95, 0xd0bd98, 0.015, 90, 1));
-}
-
-function addRoundedHill(x, z, sx, sy, sz, color, rotation = 0) {
-  const hill = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(1, 2),
-    material(color, 1)
+pedestrianRoutes.forEach((route, index) => {
+  world.add(
+    makeRibbon(
+      route,
+      0.88,
+      0xc9b58d,
+      0.018 + index * 0.012,
+      90,
+      1
+    )
   );
-  hill.scale.set(sx, sy, sz);
-  hill.position.set(x, sy * 0.18 - 0.25, z);
-  hill.rotation.y = rotation;
-  hill.castShadow = true;
-  hill.receiveShadow = true;
-  world.add(hill);
-}
-
-addRoundedHill(-25.0, 26.0, 8.3, 5.4, 4.6, 0x6f806f, 0.5);
-addRoundedHill(-11.0, 27.0, 7.8, 4.3, 4.3, 0x788776, 1.0);
-addRoundedHill(4.0, 27.2, 8.8, 4.9, 4.6, 0x70806e, 0.2);
-addRoundedHill(19.5, 26.0, 7.4, 5.2, 4.7, 0x7b8978, 0.8);
-addRoundedHill(30.0, 24.0, 6.0, 3.6, 4.1, 0x82907e, 0.1);
+});
 
 const pond = new THREE.Mesh(
   new THREE.CircleGeometry(4.3, 56),
@@ -305,54 +288,53 @@ pond.receiveShadow = true;
 world.add(pond);
 
 function addFence(cx, cz, width, depth) {
-  const wood = material(0x805a39, 0.95);
-  const postGeometry = new THREE.BoxGeometry(0.15, 1.1, 0.15);
-  const railXGeometry = new THREE.BoxGeometry(2.0, 0.10, 0.10);
-  const railZGeometry = new THREE.BoxGeometry(0.10, 0.10, 2.0);
-  const spacing = 2;
+  const wood = material(0x80552f, 0.93);
+  const postGeometry = new THREE.BoxGeometry(0.16, 1.15, 0.16);
 
-  for (let x = -width / 2; x <= width / 2 + 0.01; x += spacing) {
-    for (const z of [-depth / 2, depth / 2]) {
-      const post = new THREE.Mesh(postGeometry, wood);
-      post.position.set(cx + x, 0.55, cz + z);
-      post.castShadow = true;
-      world.add(post);
-    }
+  const addPost = (x, z) => {
+    const post = new THREE.Mesh(postGeometry, wood);
+    post.position.set(x, 0.58, z);
+    post.castShadow = true;
+    world.add(post);
+  };
+
+  const addRail = (x, y, z, w, d) => {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(w, 0.11, d),
+      wood
+    );
+    rail.position.set(x, y, z);
+    rail.castShadow = true;
+    world.add(rail);
+  };
+
+  // Continuous rails: the four sides physically meet at the corners.
+  for (const y of [0.40, 0.82]) {
+    addRail(cx, y, cz - depth / 2, width, 0.11);
+    addRail(cx, y, cz + depth / 2, width, 0.11);
+    addRail(cx - width / 2, y, cz, 0.11, depth);
+    addRail(cx + width / 2, y, cz, 0.11, depth);
   }
 
-  for (let z = -depth / 2; z <= depth / 2 + 0.01; z += spacing) {
-    for (const x of [-width / 2, width / 2]) {
-      const post = new THREE.Mesh(postGeometry, wood);
-      post.position.set(cx + x, 0.55, cz + z);
-      post.castShadow = true;
-      world.add(post);
-    }
+  const spacing = 1.8;
+  const nx = Math.max(2, Math.ceil(width / spacing));
+  const nz = Math.max(2, Math.ceil(depth / spacing));
+
+  for (let i = 0; i <= nx; i++) {
+    const x = cx - width / 2 + width * (i / nx);
+    addPost(x, cz - depth / 2);
+    addPost(x, cz + depth / 2);
   }
 
-  for (let x = -width / 2 + spacing / 2; x < width / 2; x += spacing) {
-    for (const z of [-depth / 2, depth / 2]) {
-      for (const y of [0.37, 0.78]) {
-        const rail = new THREE.Mesh(railXGeometry, wood);
-        rail.position.set(cx + x, y, cz + z);
-        rail.castShadow = true;
-        world.add(rail);
-      }
-    }
-  }
-
-  for (let z = -depth / 2 + spacing / 2; z < depth / 2; z += spacing) {
-    for (const x of [-width / 2, width / 2]) {
-      for (const y of [0.37, 0.78]) {
-        const rail = new THREE.Mesh(railZGeometry, wood);
-        rail.position.set(cx + x, y, cz + z);
-        rail.castShadow = true;
-        world.add(rail);
-      }
-    }
+  for (let i = 1; i < nz; i++) {
+    const z = cz - depth / 2 + depth * (i / nz);
+    addPost(cx - width / 2, z);
+    addPost(cx + width / 2, z);
   }
 }
 
-addFence(20.4, 8.8, 11.0, 7.4);
+const PASTURE = { x: 23.0, z: 0.6, width: 9.0, depth: 7.2 };
+addFence(PASTURE.x, PASTURE.z, PASTURE.width, PASTURE.depth);
 
 const lampLights = [];
 
@@ -494,6 +476,25 @@ function prepareMeshes(root) {
   });
 }
 
+function tuneMaterials(root, saturationBoost = 0.10, lightnessBoost = 0.04, minLightness = 0.12) {
+  root.traverse(node => {
+    if (!node.isMesh) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+
+    for (const mat of materials) {
+      if (!mat?.color) continue;
+      const hsl = {};
+      mat.color.getHSL(hsl);
+      mat.color.setHSL(
+        hsl.h,
+        Math.min(1, hsl.s + saturationBoost),
+        Math.min(0.78, Math.max(minLightness, hsl.l + lightnessBoost))
+      );
+      mat.needsUpdate = true;
+    }
+  });
+}
+
 function sizeOf(root) {
   root.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(root);
@@ -623,6 +624,17 @@ const bushTemplate = (await loadStaticTemplate(URLs.bush)).scene;
 const grassTemplate = (await loadStaticTemplate(URLs.grass)).scene;
 const rockTemplate = (await loadStaticTemplate(URLs.rock)).scene;
 
+for (const template of [
+  oakTemplate,
+  pineTemplate,
+  tallTreeTemplate,
+  bushTemplate,
+  grassTemplate,
+  rockTemplate
+]) {
+  tuneMaterials(template, 0.12, 0.055, 0.14);
+}
+
 const trackSamples = Array.from(
   { length: 240 },
   (_, i) => centerTrack.getPointAt(i / 240, new THREE.Vector3())
@@ -653,7 +665,7 @@ const blockedZones = [
   { x: 2.2, z: 9.3, r: 5.1 },
   { x: 11.8, z: -3.3, r: 5.0 },
   { x: 15.2, z: 6.6, r: 5.4 },
-  { x: 20.4, z: 8.8, r: 6.6 }
+  { x: PASTURE.x, z: PASTURE.z, r: 6.3 }
 ];
 
 function insideBlockedZone(x, z, margin = 0) {
@@ -712,7 +724,7 @@ const natureTrees = [oakTemplate, pineTemplate, tallTreeTemplate];
 let placedTrees = 0;
 let attempts = 0;
 
-while (placedTrees < 36 && attempts < 800) {
+while (placedTrees < 30 && attempts < 800) {
   attempts++;
   const p = randomPoint();
 
@@ -734,7 +746,7 @@ while (placedTrees < 36 && attempts < 800) {
 let placedBushes = 0;
 attempts = 0;
 
-while (placedBushes < 34 && attempts < 700) {
+while (placedBushes < 24 && attempts < 700) {
   attempts++;
   const p = randomPoint();
   if (!vegetationAllowed(p.x, p.z, 'bush')) continue;
@@ -753,7 +765,7 @@ while (placedBushes < 34 && attempts < 700) {
 let placedGrass = 0;
 attempts = 0;
 
-while (placedGrass < 115 && attempts < 1500) {
+while (placedGrass < 82 && attempts < 1500) {
   attempts++;
   const p = randomPoint();
   if (!vegetationAllowed(p.x, p.z, 'grass')) continue;
@@ -771,14 +783,11 @@ while (placedGrass < 115 && attempts < 1500) {
 }
 
 for (const [x, z, scale] of [
-  [-30, 25, 1.9],
-  [-18, 25, 1.5],
-  [-5, 26, 1.8],
-  [10, 26, 1.5],
-  [24, 25, 1.7],
-  [33, 20, 1.4],
-  [13, 13, 0.9],
-  [9, 12, 0.75]
+  [-27, 23, 0.42],
+  [-14, 24, 0.34],
+  [5, 23, 0.38],
+  [25, 21, 0.36],
+  [13, 13, 0.26]
 ]) {
   wrapModel(
     rockTemplate.clone(true),
@@ -787,6 +796,28 @@ for (const [x, z, scale] of [
     z,
     random() * Math.PI * 2,
     0.12
+  );
+}
+
+// A soft tree line replaces the former oversized background boulders/hills.
+for (const [x, z, scale, kind] of [
+  [-31, 24, 0.90, 1],
+  [-25, 26, 1.05, 2],
+  [-18, 25, 0.86, 0],
+  [-11, 27, 1.08, 1],
+  [-3, 26, 0.92, 2],
+  [6, 26, 1.02, 0],
+  [15, 26, 0.88, 1],
+  [23, 24, 1.05, 2],
+  [30, 21, 0.88, 1]
+]) {
+  const template = natureTrees[kind];
+  wrapModel(
+    template.clone(true),
+    natureScale * scale,
+    x,
+    z,
+    random() * Math.PI * 2
   );
 }
 
@@ -811,18 +842,21 @@ await addWalker(URLs.female, pedestrianRoutes[1], 0.028, 0.68);
 await addWalker(URLs.male, pedestrianRoutes[2], 0.055, 0.10, true);
 
 const cowRoute = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(17.1, 0.18, 7.0),
-  new THREE.Vector3(20.2, 0.18, 6.3),
-  new THREE.Vector3(23.4, 0.18, 7.5),
-  new THREE.Vector3(23.7, 0.18, 10.4),
-  new THREE.Vector3(20.7, 0.18, 11.2),
-  new THREE.Vector3(17.5, 0.18, 10.3)
+  new THREE.Vector3(20.0, 0.18, -1.6),
+  new THREE.Vector3(23.0, 0.18, -2.0),
+  new THREE.Vector3(26.0, 0.18, -1.2),
+  new THREE.Vector3(26.2, 0.18, 2.4),
+  new THREE.Vector3(23.1, 0.18, 3.0),
+  new THREE.Vector3(20.0, 0.18, 2.2)
 ], true, 'catmullrom', 0.3);
 
 async function addCow(speed, phase, first = false) {
   const gltf = first ? cowRef : await loadFresh(URLs.cow);
   const wrapper = wrapModel(gltf.scene, cowScale, 0, 0, 0, 0.14);
-  playClip(wrapper, gltf.animations, [/walk/i, /idle_eating/i, /idle/i]);
+  const mixer = playClip(wrapper, gltf.animations, [/(^|\|)walk$/i, /walk/i, /idle/i]);
+  if (mixer) {
+    for (const action of mixer._actions || []) action.timeScale = 1.15;
+  }
 
   cows.push({
     wrapper,
@@ -832,30 +866,28 @@ async function addCow(speed, phase, first = false) {
   });
 }
 
-await addCow(0.010, 0.08, true);
-await addCow(0.008, 0.42);
-await addCow(0.009, 0.72);
+await addCow(0.022, 0.08, true);
+await addCow(0.018, 0.42);
+await addCow(0.020, 0.72);
 
-const stationIdle = await loadFresh(URLs.female);
-const stationPerson = wrapModel(
-  stationIdle.scene,
-  characterScale,
-  3.6,
-  -16.55,
-  Math.PI * 0.1,
-  0.15
-);
-playClip(stationPerson, stationIdle.animations, [/idle/i, /walk/i]);
+const stationRoute = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(-4.6, 0.18, -16.55),
+  new THREE.Vector3(-1.8, 0.18, -16.55),
+  new THREE.Vector3(1.8, 0.18, -16.55),
+  new THREE.Vector3(4.6, 0.18, -16.55)
+], false, 'catmullrom', 0.15);
+
+await addWalker(URLs.female, stationRoute, 0.085, 0.18, true);
 
 status.textContent =
-  'v0.3 · train avec arrêt en gare · chemins piétons · végétation enrichie';
+  'v0.4 · train avec arrêt en gare · chemins piétons · végétation enrichie';
 
 let paused = false;
 let night = false;
 let elapsed = 0;
 
 const TRAIN_MAX_SPEED = 5.2;
-const STATION_DISTANCE = trackLength * 0.75;
+const STATION_DISTANCE = trackLength * 0.75 + 4.2;
 let trainDistance = THREE.MathUtils.euclideanModulo(STATION_DISTANCE - 38, trackLength);
 let trainSpeed = TRAIN_MAX_SPEED;
 let stopTimer = 0;
@@ -873,7 +905,7 @@ function updateTrain(dt) {
     if (stopTimer <= 0) {
       stationCooldown = 20;
       status.textContent =
-        'v0.3 · le train repart · personnages sur chemins · 36 arbres + buissons';
+        'v0.4 · le train repart · personnages sur chemins · 30 arbres + buissons';
     }
   } else {
     stationCooldown = Math.max(0, stationCooldown - dt);
@@ -966,10 +998,11 @@ function setNight(value) {
   scene.background = skyTexture;
   oldSky?.dispose?.();
 
-  hemi.intensity = night ? 0.44 : 2.25;
-  sun.intensity = night ? 0.30 : 4.1;
+  ambient.intensity = night ? 0.18 : 0.55;
+  hemi.intensity = night ? 0.38 : 1.75;
+  sun.intensity = night ? 0.28 : 3.35;
   sun.color.set(night ? 0x9fb8d7 : 0xffefd0);
-  renderer.toneMappingExposure = night ? 0.70 : 1.02;
+  renderer.toneMappingExposure = night ? 0.72 : 1.08;
 
   for (const { light, bulbMaterial } of lampLights) {
     light.intensity = night ? 3.2 : 0;
