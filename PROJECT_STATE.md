@@ -81,3 +81,37 @@ GeoAdmin publie également swissBUILDINGS3D en 3D Tiles. Cette piste est retenue
 
 ## Prochaine action
 Valider d'abord `layout-official.html`, puis ajuster la couche fiction dans `layout-fiction-editor.html`. Une fois les deux couches validées, brancher les coordonnées LV95 dans Three.js et tester l'intégration des bâtiments officiels 3D.
+
+
+## Prototype 3D LV95 v0.1
+Ajout de `le-muids-3d.html` et `src/muids3d/main.js`.
+
+Le prototype:
+- travaille en mètres autour de l'ancre gare Le Muids;
+- transforme les coordonnées LV95 officielles en coordonnées locales Three.js;
+- charge le fond WMS officiel sur un plateau 3D;
+- affiche routes et rails swissTLM3D comme géométrie Three.js;
+- affiche la boucle ferroviaire fictive et la route intérieure depuis `data/le_muids_fiction_v01.json`;
+- matérialise les 4 passages inférieurs prévus avec des marqueurs 3D;
+- réutilise le train Kenney existant et l'anime sur la boucle fictive;
+- fournit vue initiale, vue du dessus et masquage réel/fiction.
+
+Limites connues:
+- terrain plat, sans swissALTI3D;
+- les passages inférieurs sont encore des marqueurs/volumes de contrôle, pas des tunnels creusés;
+- swissBUILDINGS3D n'est pas encore intégré dans cette scène locale;
+- la boucle fictive reste un brouillon à régler dans l'éditeur.
+
+## Recherche bâtiments 3D
+Endpoint public confirmé:
+`https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json`
+
+Le dataset est servi en 3D Tiles. L'intégration directe dans notre scène locale nécessite encore le raccord entre le repère géocentrique des 3D Tiles et notre repère local LV95/ENU. Cette étape est séparée pour ne pas fragiliser le prototype géométrique actuel.
+
+## Prochaine action
+Tester `le-muids-3d.html`, puis:
+1. corriger la couche fictive si nécessaire;
+2. ajouter le relief swissALTI3D/terrain;
+3. intégrer swissBUILDINGS3D dans un repère ENU local;
+4. remplacer les marqueurs de tunnels par deux vraies séquences de passage inférieur;
+5. seulement ensuite réintroduire végétation/animaux/personnages.
