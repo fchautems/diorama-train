@@ -236,3 +236,42 @@ Si la géométrie ferroviaire est validée:
 2. ajouter uniquement les courts raccords fictifs nécessaires;
 3. construire de vrais passages inférieurs de la Route cantonale;
 4. styliser maisons/végétation vers le rendu miniature.
+
+
+## v0.5.1 — régression détectée par capture utilisateur + garde-fou visuel
+Retour utilisateur sur v0.5:
+- les bâtiments et arbres officiels avaient quasiment tous disparu;
+- le statut indiquait 6'844 « maisons » et 2'064 végétations supprimées, preuve que le filtrage par batch était massivement trop agressif;
+- la correction annoncée du raccord ferroviaire n'était pas suffisamment visible/validée avant livraison.
+
+Corrections immédiates:
+- suppression du masquage destructif des batches swissBUILDINGS3D / végétation;
+- maisons et arbres officiels conservés intégralement, avec seulement le clipping de scène;
+- le conflit rail/bâtiments doit désormais être résolu par le tracé du rail, pas en effaçant massivement le village;
+- rails/sleepers légèrement renforcés visuellement pour contrôle;
+- calcul de deux angles de raccord réel -> fiction exposé dans le statut et dans `window.__DIORAMA_QA__`;
+- seuil de régression automatique: chaque angle de raccord doit rester < 18°;
+- exposition QA de: longueur de vraie voie, relief, état des toggles, nombre de meshes bâtiments/végétation réellement chargés.
+
+### Contrôle visuel automatique
+Ajouts:
+- `package.json`;
+- `playwright.config.mjs`;
+- `tests/visual-smoke.spec.mjs`;
+- `.github/workflows/visual-smoke.yml`;
+- `RUN_VISUAL_CHECK.bat`.
+
+Le test Playwright:
+1. lance le prototype avec `?qa=1` dans une vue dessus déterministe;
+2. attend que des meshes bâtiments ET végétation soient réellement chargés;
+3. vérifie relief > 1 m;
+4. vérifie vraie voie > 150 m;
+5. vérifie les deux raccords < 18°;
+6. capture `test-results/le-muids-qa.png`;
+7. écrit `test-results/le-muids-qa.json`;
+8. échoue sur erreur console/page.
+
+GitHub Actions exécute ce contrôle à chaque push et publie le screenshot + JSON comme artifact.
+
+Nouvelle règle de projet:
+**ne plus considérer une modification 3D livrable sans un screenshot QA récent et les assertions visuelles/structurelles correspondantes.**
