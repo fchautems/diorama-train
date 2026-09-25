@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "units": "1 Three.js unit = 1 meter",
+  "packs": {
+    "kenney-train-kit": {
+      "license": "CC0-1.0",
+      "official": "https://kenney.nl/assets/train-kit",
+      "scale_reference": "train-locomotive-a.glb",
+      "scale_target": {
+        "max_horizontal_m": 5.5
+      },
+      "assets": [
+        "train-locomotive-a.glb",
+        "train-carriage-wood.glb",
+        "railroad-straight.glb",
+        "railroad-curve.glb"
+      ]
+    },
+    "kenney-city-kit-suburban": {
+      "license": "CC0-1.0",
+      "official": "https://kenney.nl/assets/city-kit-suburban",
+      "scale_reference": "building-type-a.glb",
+      "scale_target": {
+        "height_m": 5.2
+      },
+      "assets": [
+        "building-type-a.glb",
+        "building-type-h.glb",
+        "tree-large.glb",
+        "tree-small.glb"
+      ]
+    },
+    "kenney-mini-characters": {
+      "license": "CC0-1.0",
+      "official": "https://kenney.nl/assets/mini-characters",
+      "scale_reference": "character-male-a.glb",
+      "scale_target": {
+        "height_m": 1.75
+      },
+      "assets": [
+        "character-male-a.glb",
+        "character-female-a.glb"
+      ]
+    }
+  }
+}
