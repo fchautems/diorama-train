@@ -854,9 +854,7 @@ async function addCow(speed, phase, first = false) {
   const gltf = first ? cowRef : await loadFresh(URLs.cow);
   const wrapper = wrapModel(gltf.scene, cowScale, 0, 0, 0, 0.14);
   const mixer = playClip(wrapper, gltf.animations, [/(^|\|)walk$/i, /walk/i, /idle/i]);
-  if (mixer) {
-    for (const action of mixer._actions || []) action.timeScale = 1.15;
-  }
+  if (mixer) mixer.timeScale = 1.15;
 
   cows.push({
     wrapper,
