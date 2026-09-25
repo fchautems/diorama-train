@@ -137,7 +137,8 @@ export async function buildTerrainMesh(model, centerE, centerN, textureUrl, rend
       const b = a + 1;
       const c = a + model.cols;
       const d = c + 1;
-      indices.push(a, c, b, b, c, d);
+      // Winding chosen for an upward-facing normal in our X/east, Z/south local frame.
+      indices.push(a, b, c, b, d, c);
     }
   }
 
