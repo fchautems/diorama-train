@@ -38,17 +38,27 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.03;
+renderer.localClippingEnabled = true;
 app.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb9d6e5);
 
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 7000);
-const HOME_POS = new THREE.Vector3(760, 610, 940);
+
+const [sceneMinE, sceneMinN, sceneMaxE, sceneMaxN] = LE_MUIDS.bbox;
+const sceneCenter = new THREE.Vector3(
+  (sceneMinE + sceneMaxE) / 2 - LE_MUIDS.station[0],
+  16,
+  -((sceneMinN + sceneMaxN) / 2 - LE_MUIDS.station[1])
+);
+const HOME_POS = sceneCenter.clone().add(
+  new THREE.Vector3(300, 260, 360)
+);
 camera.position.copy(HOME_POS);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 18, 0);
+controls.target.copy(sceneCenter);
 controls.enableDamping = true;
 controls.dampingFactor = 0.055;
 controls.maxPolarAngle = Math.PI * 0.495;
@@ -420,102 +430,69 @@ function buildStitchedRailPolyline(official) {
   return stitched;
 }
 
-function forwardArc(ring, startIndex, endIndex) {
-  const out = [ring[startIndex]];
-  let i = startIndex;
-
-  while (i !== endIndex) {
-    i = (i + 1) % ring.length;
-    out.push(ring[i]);
-    if (out.length > ring.length + 1) break;
-  }
-
-  return out;
-}
-
-function buildHybridRailLoop(official, outerLoop) {
+function buildStationRightRailLoop(official) {
   const stitched = buildStitchedRailPolyline(official);
 
   if (!stitched || stitched.length < 2) {
+    const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
     return {
-      points: outerLoop,
+      points: [
+        [LE_MUIDS.station[0], minN + 40],
+        [LE_MUIDS.station[0] + 45, minN + 22],
+        [maxE - 55, minN + 28],
+        [maxE - 18, (minN + maxN) / 2],
+        [maxE - 55, maxN - 28],
+        [LE_MUIDS.station[0] + 45, maxN - 22]
+      ],
       realSegment: [],
       realLength: 0,
       fallback: true
     };
   }
 
-  const realSegment = extractPolylineWindow(
+  let realSegment = extractPolylineWindow(
     stitched,
     LE_MUIDS.station,
-    180
+    105
   );
 
-  let ring = outerLoop.map(point => [...point]);
-
-  if (
-    ring.length > 2 &&
-    distance2D(ring[0], ring[ring.length - 1]) < 0.01
-  ) {
-    ring = ring.slice(0, -1);
+  // Always run the real section from south to north, so the added loop
+  // naturally leaves the north end, circles the village on the right,
+  // and returns to the south end.
+  if (realSegment[0][1] > realSegment[realSegment.length - 1][1]) {
+    realSegment = realSegment.reverse();
   }
 
-  const a = realSegment[0];
-  const b = realSegment[realSegment.length - 1];
+  const southEnd = realSegment[0];
+  const northEnd = realSegment[realSegment.length - 1];
+  const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
 
-  const nearestIndex = point => {
-    let bestIndex = 0;
-    let bestDistance = Infinity;
+  const east = maxE - 22;
+  const top = maxN - 22;
+  const bottom = minN + 22;
+  const rightMidN = (minN + maxN) / 2;
 
-    ring.forEach((candidate, index) => {
-      const d = distance2D(candidate, point);
-      if (d < bestDistance) {
-        bestDistance = d;
-        bestIndex = index;
-      }
-    });
-
-    return bestIndex;
-  };
-
-  const indexA = nearestIndex(a);
-  const indexB = nearestIndex(b);
-
-  const arcForward = forwardArc(ring, indexB, indexA);
-  const arcBackward = forwardArc(ring, indexA, indexB)
-    .reverse();
-
-  const outerArc =
-    polylineLength(arcForward) >= polylineLength(arcBackward)
-      ? arcForward
-      : arcBackward;
-
-  const tangentA = new THREE.Vector2(
-    a[0] - realSegment[1][0],
-    a[1] - realSegment[1][1]
-  ).normalize();
-
-  const tangentB = new THREE.Vector2(
-    b[0] - realSegment[realSegment.length - 2][0],
-    b[1] - realSegment[realSegment.length - 2][1]
-  ).normalize();
-
-  const leadA = [
-    a[0] + tangentA.x * 35,
-    a[1] + tangentA.y * 35
-  ];
-
-  const leadB = [
-    b[0] + tangentB.x * 35,
-    b[1] + tangentB.y * 35
+  const outerArc = [
+    [
+      Math.max(northEnd[0] + 40, LE_MUIDS.station[0] + 55),
+      Math.min(top, northEnd[1] + 25)
+    ],
+    [LE_MUIDS.station[0] + 170, top],
+    [maxE - 85, top],
+    [east, rightMidN + 55],
+    [east, rightMidN - 55],
+    [maxE - 85, bottom],
+    [LE_MUIDS.station[0] + 170, bottom],
+    [
+      Math.max(southEnd[0] + 40, LE_MUIDS.station[0] + 55),
+      Math.max(bottom, southEnd[1] - 25)
+    ]
   ];
 
   return {
     points: [
       ...realSegment,
-      leadB,
-      ...outerArc,
-      leadA
+      ...outerArc
     ],
     realSegment,
     realLength: polylineLength(realSegment),
@@ -680,6 +657,33 @@ async function buildTrain(curve) {
   return cars;
 }
 
+function sceneClippingPlanes() {
+  const minX = sceneMinE - centerE;
+  const maxX = sceneMaxE - centerE;
+  const minZ = -(sceneMaxN - centerN);
+  const maxZ = -(sceneMinN - centerN);
+
+  return [
+    new THREE.Plane(new THREE.Vector3(1, 0, 0), -minX),
+    new THREE.Plane(new THREE.Vector3(-1, 0, 0), maxX),
+    new THREE.Plane(new THREE.Vector3(0, 0, 1), -minZ),
+    new THREE.Plane(new THREE.Vector3(0, 0, -1), maxZ)
+  ];
+}
+
+function applySceneClipping(material) {
+  const materials = Array.isArray(material)
+    ? material
+    : [material];
+
+  for (const item of materials) {
+    if (!item) continue;
+    item.clippingPlanes = sceneClippingPlanes();
+    item.clipIntersection = false;
+    item.needsUpdate = true;
+  }
+}
+
 async function createOfficialTilesLayer(url, kind, toggle) {
   if (!localFrame) {
     localFrame = await fetchLocalFrame(centerE, centerN);
@@ -723,6 +727,7 @@ async function createOfficialTilesLayer(url, kind, toggle) {
         node.geometry.computeVertexNormals();
       }
 
+      applySceneClipping(node.material);
       node.castShadow = kind === 'buildings';
       node.receiveShadow = true;
     });
@@ -794,8 +799,8 @@ try {
   terrainModel = await loadTerrainGrid(
     LE_MUIDS.bbox,
     localFrame.groundHeight,
-    41,
-    31
+    17,
+    11
   );
 } catch (error) {
   console.warn('Terrain profile failed; flat fallback.', error);
@@ -807,7 +812,7 @@ try {
 }
 
 const terrainTextureUrl = wmsUrl(
-  LE_MUIDS.layers.cadastralWms,
+  LE_MUIDS.layers.orthophotoWms,
   LE_MUIDS.bbox,
   1600,
   1000
@@ -850,12 +855,11 @@ try {
 
 const counts = buildOfficialNetwork(official);
 
-// v0.3: the railway loop is now hybrid.
+// v0.4: the station is deliberately the LEFT anchor of the scene.
 // A real swissTLM3D rail section around Le Muids station is preserved,
-// then only the rest of the circuit is closed with our fictional outer loop.
-const hybridRail = buildHybridRailLoop(
-  official,
-  fiction.railLoop
+// then the added circuit loops only through the village/right-hand side.
+const hybridRail = buildStationRightRailLoop(
+  official
 );
 
 const railCurve = addTrack(
@@ -973,7 +977,7 @@ document.querySelector('#reset').addEventListener(
   'click',
   () => {
     camera.position.copy(HOME_POS);
-    controls.target.set(0, 18, 0);
+    controls.target.copy(sceneCenter);
     controls.update();
   }
 );
@@ -981,8 +985,12 @@ document.querySelector('#reset').addEventListener(
 document.querySelector('#top').addEventListener(
   'click',
   () => {
-    camera.position.set(0, 1650, 0.01);
-    controls.target.set(0, 0, 0);
+    camera.position.set(
+      sceneCenter.x,
+      720,
+      sceneCenter.z + 0.01
+    );
+    controls.target.copy(sceneCenter);
     controls.update();
   }
 );
@@ -1049,7 +1057,7 @@ status.textContent =
   hybridRail.realLength.toFixed(0) +
   ' m de vraie voie intégrés à la boucle · relief ' +
   relief +
-  ' m · ' +
+  ' m · cadrage village 505×295 m · ' +
   counts.roads +
   ' routes · ' +
   counts.rails +
