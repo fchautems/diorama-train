@@ -40,6 +40,20 @@ test('Le Muids visual smoke control', async ({ page }) => {
 
   const qa = await page.evaluate(() => window.__DIORAMA_QA__);
 
+  // Always persist diagnostics and a perspective screenshot BEFORE assertions
+  // so a failed visual gate still leaves enough evidence to debug the scene.
+  fs.writeFileSync(
+    'test-results/le-muids-qa.json',
+    JSON.stringify({ qa, browserErrors }, null, 2)
+  );
+
+  await page.screenshot({
+    path: 'test-results/le-muids-perspective.png',
+    fullPage: true
+  });
+
+  console.log('DIORAMA_QA=' + JSON.stringify(qa));
+
   expect(qa.buildingsChecked).toBe(true);
   expect(qa.vegetationChecked).toBe(true);
   expect(qa.realRailLengthM).toBeGreaterThan(90);
@@ -55,11 +69,6 @@ test('Le Muids visual smoke control', async ({ page }) => {
   expect(qa.joinAnglesDeg.north).toBeLessThan(18);
   expect(qa.joinAnglesDeg.south).toBeLessThan(18);
 
-  await page.screenshot({
-    path: 'test-results/le-muids-perspective.png',
-    fullPage: true
-  });
-
   await page.click('#top');
   await page.waitForTimeout(1200);
 
@@ -67,11 +76,6 @@ test('Le Muids visual smoke control', async ({ page }) => {
     path: 'test-results/le-muids-top.png',
     fullPage: true
   });
-
-  fs.writeFileSync(
-    'test-results/le-muids-qa.json',
-    JSON.stringify({ qa, browserErrors }, null, 2)
-  );
 
   expect(browserErrors).toEqual([]);
 });
