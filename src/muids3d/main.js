@@ -878,12 +878,10 @@ function applySceneClipping(material) {
 
 function meshWorldBounds(mesh) {
   mesh.updateWorldMatrix(true, false);
-  const box = new THREE.Box3().setFromObject(mesh);
-  return box;
+  return new THREE.Box3().setFromObject(mesh);
 }
 
-function shouldHideMeshFromScene(mesh, kind) {
-  const box = meshWorldBounds(mesh);
+function boxShouldBeRemoved(box, kind) {
   if (box.isEmpty()) return false;
 
   const center = box.getCenter(new THREE.Vector3());
@@ -898,10 +896,10 @@ function shouldHideMeshFromScene(mesh, kind) {
     : -15;
 
   if (
-    center.x < minX - 5 ||
-    center.x > maxX + 5 ||
-    center.z < minZ - 5 ||
-    center.z > maxZ + 5 ||
+    center.x < minX - 4 ||
+    center.x > maxX + 4 ||
+    center.z < minZ - 4 ||
+    center.z > maxZ + 4 ||
     box.max.y < bottomCut
   ) {
     return true;
@@ -909,8 +907,6 @@ function shouldHideMeshFromScene(mesh, kind) {
 
   if (!activeRailClearanceCurve) return false;
 
-  // Keep the real-station section intact visually; clearance filtering is
-  // mainly for the added loop through the diorama.
   const corridor = kind === 'buildings' ? 11 : 8;
   const footprintRadius = Math.min(
     12,
@@ -923,13 +919,105 @@ function shouldHideMeshFromScene(mesh, kind) {
   ) < corridor + footprintRadius;
 }
 
+function filterBatchedMesh(mesh, kind) {
+  const geometry = mesh.geometry;
+  const batch = geometry.getAttribute('_batchid');
+  const position = geometry.getAttribute('position');
+
+  if (!batch || !position || batch.count !== position.count) {
+    return null;
+  }
+
+  mesh.updateWorldMatrix(true, false);
+
+  const batchBoxes = new Map();
+  const p = new THREE.Vector3();
+
+  for (let i = 0; i < position.count; i++) {
+    const id = Math.round(batch.getX(i));
+    let box = batchBoxes.get(id);
+
+    if (!box) {
+      box = new THREE.Box3();
+      batchBoxes.set(id, box);
+    }
+
+    p.fromBufferAttribute(position, i)
+      .applyMatrix4(mesh.matrixWorld);
+
+    box.expandByPoint(p);
+  }
+
+  const removeIds = new Set();
+
+  for (const [id, box] of batchBoxes) {
+    if (boxShouldBeRemoved(box, kind)) {
+      removeIds.add(id);
+    }
+  }
+
+  if (!removeIds.size) {
+    return 0;
+  }
+
+  const sourceIndex = geometry.index;
+  const kept = [];
+
+  if (sourceIndex) {
+    for (let i = 0; i + 2 < sourceIndex.count; i += 3) {
+      const ia = sourceIndex.getX(i);
+      const ib = sourceIndex.getX(i + 1);
+      const ic = sourceIndex.getX(i + 2);
+      const id = Math.round(batch.getX(ia));
+
+      if (!removeIds.has(id)) {
+        kept.push(ia, ib, ic);
+      }
+    }
+  } else {
+    for (let i = 0; i + 2 < position.count; i += 3) {
+      const id = Math.round(batch.getX(i));
+
+      if (!removeIds.has(id)) {
+        kept.push(i, i + 1, i + 2);
+      }
+    }
+  }
+
+  geometry.setIndex(kept);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+
+  if (!kept.length) {
+    mesh.visible = false;
+  }
+
+  return removeIds.size;
+}
+
 function filterLoadedOfficialScene(root, kind) {
   root?.updateMatrixWorld(true);
 
   root?.traverse(node => {
     if (!node.isMesh) return;
 
-    if (shouldHideMeshFromScene(node, kind)) {
+    const removedBatches = filterBatchedMesh(
+      node,
+      kind
+    );
+
+    if (removedBatches !== null) {
+      if (kind === 'buildings') {
+        corridorRemovedBuildings += removedBatches;
+      } else {
+        corridorRemovedVegetation += removedBatches;
+      }
+      return;
+    }
+
+    const box = meshWorldBounds(node);
+
+    if (boxShouldBeRemoved(box, kind)) {
       node.visible = false;
 
       if (kind === 'buildings') {
