@@ -6,59 +6,60 @@ Dernière mise à jour: 2026-09-25
 - Dépôt `fchautems/diorama-train`.
 - Runtime: Three.js/WebGL dans le navigateur.
 - Direction: diorama ferroviaire low-poly / maquette miniature.
-- v0.2 a été testée visuellement par l'utilisateur. Retours principaux: PNJ qui reculent et traversent librement, voie trop épaisse/bizarre, brouillard inutile, montagnes trop grandes et hors plateau, arbres parfois sur la voie, végétation trop pauvre.
+- v0.3 a été testée visuellement par l'utilisateur.
+- Retours v0.3: couleurs trop délavées, enclos des vaches partiellement sur la voie et visuellement ouvert, vaches semblant faire du sur-place, z-fighting/superposition au centre du village, gros reliefs/rochers peu convaincants, train arrêté un peu trop tôt, personnage de gare mal orienté/statiquement coincé.
 
-## Changements v0.3
-- Suppression complète du brouillard.
-- Plateau agrandi pour donner plus d'espace de composition.
-- Voie entièrement refaite:
-  - ballast plat en ruban, plus de gros tube gris ;
-  - deux rails métalliques fins ;
-  - 132 traverses.
-- Train conservé avec locomotive + 2 wagons.
-- Ajout d'un comportement ferroviaire: ralentissement, arrêt de 4,5 s en gare, puis redémarrage.
-- PNJ:
-  - suppression des trajectoires libres autour de centres arbitraires ;
-  - création de 3 chemins/splines dédiés et visibles ;
-  - 4 promeneurs restent sur ces chemins ;
-  - 1 cinquième personnage reste à la gare ;
-  - correction de l'orientation: suppression du retournement de 180° qui les faisait marcher à reculons.
-- Vaches confinées à une spline fermée à l'intérieur du pâturage.
-- Végétation:
-  - ajout du Kenney Nature Kit CC0 ;
-  - chêne, pin, arbre haut, buisson, herbe et rocher ajoutés au dépôt ;
-  - environ 36 arbres, 34 buissons et 115 touffes d'herbe placés de façon déterministe ;
-  - zones d'exclusion autour des voies, chemins, bâtiments, étang et pâturage.
-- Relief:
-  - retrait des grands cônes montagneux ;
-  - remplacement par une ligne de collines low-poly plus basses, intégrées au fond de la maquette.
-- Nuages refaits avec des formes low-poly plus plates.
-- Gare enrichie avec bancs et lampadaires ; les lampes s'allument en mode nuit.
-- Le lanceur Windows `START_DIORAMA.bat` reste le point d'entrée.
+## Changements v0.4
+- Rendu:
+  - passage de ACES Filmic à Neutral Tone Mapping ;
+  - exposition jour portée à 1.08 ;
+  - ajout d'une lumière ambiante douce ;
+  - rééquilibrage Hemisphere/Directional Light ;
+  - terrain légèrement plus saturé ;
+  - matériaux Nature Kit légèrement rehaussés en saturation/luminosité avec plancher de luminosité pour éviter les végétaux presque noirs.
+- Centre du village:
+  - suppression de la grande place ovale ;
+  - chemins réduits à 0.88 m de large ;
+  - faible décalage vertical différent par chemin pour supprimer le z-fighting aux croisements.
+- Pâturage:
+  - déplacement vers `x=23, z=0.6`, entièrement à l'intérieur de la boucle ;
+  - dimensions ~9 × 7.2 m ;
+  - clôture reconstruite avec quatre rails continus et poteaux réguliers, donc visuellement fermée ;
+  - trajectoire des vaches déplacée dans ce nouvel enclos.
+- Vaches:
+  - priorité explicite au clip `walk` ;
+  - mixer accéléré à 1.15× ;
+  - vitesse de déplacement environ doublée pour rendre le mouvement perceptible.
+- Paysage:
+  - suppression des gros reliefs arrondis ;
+  - réduction forte de la taille/nombre des rochers ;
+  - ajout d'une ligne d'arbres de fond à la place ;
+  - végétation réduite à ~30 arbres, ~24 buissons et ~82 touffes d'herbe pour alléger la scène.
+- Gare:
+  - cible d'arrêt du train avancée de ~4.2 m pour mieux aligner la locomotive sur le quai ;
+  - personnage statique supprimé ;
+  - ajout d'un personnage qui fait un petit aller-retour sur le quai.
+- Jour/nuit ajusté au nouveau schéma d'éclairage.
+- `START_DIORAMA.bat` reste le point d'entrée.
 
-## Choix technique PNJ / collisions
-Pas de moteur de physique ni de navmesh à ce stade. Les personnages suivent des chemins explicites. Pour un diorama observé de l'extérieur, cette méthode garantit qu'ils restent sur les zones prévues sans introduire une simulation plus lourde.
+## Choix technique maintenu
+Pas de moteur physique ni de navmesh à ce stade. Les personnages et animaux suivent des splines contrôlées. C'est adapté à un diorama observé de l'extérieur et évite la complexité d'une navigation dynamique tant qu'elle n'est pas nécessaire.
 
-## Assets ajoutés en v0.3
-Kenney Nature Kit, CC0:
-- `tree_oak.glb`
-- `tree_pineRoundC.glb`
-- `tree_tall.glb`
-- `plant_bushDetailed.glb`
-- `grass_large.glb`
-- `rock_largeC.glb`
+## Assets
+Aucun nouvel asset externe ajouté en v0.4. Les assets existants restent ceux documentés dans `assets/ATTRIBUTION.md`.
 
 ## À vérifier visuellement
-- Sens réel des personnages après retrait du yaw +180°.
-- Sens de la locomotive et écart entre wagons dans les courbes.
-- Qualité visuelle du nouveau ballast plat.
-- Placement des arbres/buissons/herbes par rapport aux rails et bâtiments.
-- Taille du nouveau relief de fond.
-- Arrêt du train en gare et reprise après 4,5 s.
-- Charge/performance de la végétation sur la machine cible.
+- Saturation/couleurs: plus vives sans être criardes.
+- Absence de clignotement au centre du village.
+- Enclos entièrement fermé et nettement séparé de la voie.
+- Déplacement visible des vaches.
+- Arrêt de la locomotive correctement aligné au quai.
+- Personnage de quai correctement orienté pendant son aller-retour.
+- Fond végétal plus naturel que les anciens gros blocs.
+- Aucun arbre/buisson/herbe sur les rails.
 
 ## Bâtiments
-Les maisons actuelles restent des modèles complets du Kenney City Kit (Suburban). Si la prochaine passe demande plus de variété architecturale, privilégier Kenney Modular Buildings plutôt que des bâtiments procéduraux grossiers.
+Les maisons actuelles restent des modèles complets du Kenney City Kit (Suburban). Une future passe peut tester Kenney Modular Buildings pour introduire une gare et des maisons plus variées sans changer de direction artistique.
 
 ## Prochaine action
-Lancer v0.3 via `START_DIORAMA.bat`, faire une nouvelle passe visuelle, puis corriger uniquement les défauts constatés avant d'ajouter de nouveaux événements.
+Lancer v0.4 via `START_DIORAMA.bat` et faire une nouvelle passe visuelle ciblée. Ne pas complexifier davantage avant d'avoir vérifié ces corrections.
