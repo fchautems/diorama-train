@@ -1068,7 +1068,14 @@ function countRaisedOfficialMeshes(tiles) {
 
   let count = 0;
   const box = new THREE.Box3();
-  const center = new THREE.Vector3();
+
+  const minX = sceneMinE - centerE;
+  const maxX = sceneMaxE - centerE;
+  const minZ = -(sceneMaxN - centerN);
+  const maxZ = -(sceneMinN - centerN);
+  const minTerrainY = terrainModel
+    ? terrainModel.minHeight - terrainModel.stationHeight
+    : -20;
 
   tiles.group.updateMatrixWorld(true);
 
@@ -1078,20 +1085,19 @@ function countRaisedOfficialMeshes(tiles) {
     box.setFromObject(node);
     if (box.isEmpty()) return;
 
-    box.getCenter(center);
+    const overlapsScene =
+      box.max.x >= minX &&
+      box.min.x <= maxX &&
+      box.max.z >= minZ &&
+      box.min.z <= maxZ;
 
-    const e = centerE + center.x;
-    const n = centerN - center.z;
+    if (!overlapsScene) return;
 
-    if (
-      e < sceneMinE || e > sceneMaxE ||
-      n < sceneMinN || n > sceneMaxN
-    ) {
-      return;
-    }
-
-    const terrain = groundY(e, n);
-    if (box.max.y > terrain + 1.5) {
+    // Some vegetation tiles are large batched meshes whose center lies
+    // outside the compact diorama even though individual trees are visible
+    // inside it. Scene overlap + vertical extent is therefore the right QA
+    // criterion, not mesh-center position.
+    if (box.max.y > minTerrainY + 1.5) {
       count++;
     }
   });
