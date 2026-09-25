@@ -54,6 +54,15 @@ test('Le Muids visual smoke control', async ({ page }) => {
 
   console.log('DIORAMA_QA=' + JSON.stringify(qa));
 
+  // Capture the top view before assertions as well, so any failure still
+  // leaves both visual perspectives for diagnosis.
+  await page.click('#top');
+  await page.waitForTimeout(1200);
+  await page.screenshot({
+    path: 'test-results/le-muids-top.png',
+    fullPage: true
+  });
+
   expect(qa.buildingsChecked).toBe(true);
   expect(qa.vegetationChecked).toBe(true);
   expect(qa.realRailLengthM).toBeGreaterThan(90);
@@ -68,14 +77,6 @@ test('Le Muids visual smoke control', async ({ page }) => {
   // angle, the build fails before delivery.
   expect(qa.joinAnglesDeg.north).toBeLessThan(18);
   expect(qa.joinAnglesDeg.south).toBeLessThan(18);
-
-  await page.click('#top');
-  await page.waitForTimeout(1200);
-
-  await page.screenshot({
-    path: 'test-results/le-muids-top.png',
-    fullPage: true
-  });
 
   expect(browserErrors).toEqual([]);
 });
