@@ -275,3 +275,26 @@ GitHub Actions exécute ce contrôle à chaque push et publie le screenshot + JS
 
 Nouvelle règle de projet:
 **ne plus considérer une modification 3D livrable sans un screenshot QA récent et les assertions visuelles/structurelles correspondantes.**
+
+
+## v0.5.2 — validation visuelle effective
+La v0.5.1 a confirmé que compter des meshes chargés ne prouvait pas qu'ils étaient réellement visibles au-dessus du terrain.
+
+Corrections v0.5.2:
+- tronçon réel ramené à ~116 m autour de la gare pour éviter le retour diagonal à travers le champ;
+- boucle routée par la périphérie droite/top/bas du plateau;
+- transitions réelles -> fiction recalculées et validées à ~1.64° / 3.44°;
+- auto-calibration verticale des 3D Tiles officiels par comparaison des vertices bas avec le terrain LV95;
+- correction verticale bâtiments détectée: ~+48.07 m;
+- végétation alignée sur le même datum officiel;
+- test QA renforcé: il exige désormais des meshes réellement visibles au-dessus du terrain, pas seulement chargés;
+- contrôle final GitHub Actions réussi avec:
+  - 116 m de vraie voie;
+  - relief 64.9 m;
+  - 24 meshes bâtiments visibles au-dessus du terrain;
+  - 6 meshes végétation visibles;
+  - aucune erreur navigateur;
+- screenshots de contrôle perspective + vue du dessus produits automatiquement.
+
+Décision:
+**ne pas reprendre la route intérieure/tunnels tant que cette géométrie ferroviaire n'est pas validée par l'utilisateur.**
