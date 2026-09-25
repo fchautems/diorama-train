@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Le Muids — prototype 3D géoréférencé</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#b9d6e5;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#1b252b}
+  #app{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%}
+  .hud{position:absolute;left:14px;top:14px;z-index:4;background:rgba(255,255,255,.9);backdrop-filter:blur(9px);border:1px solid rgba(20,30,35,.15);border-radius:12px;padding:11px 12px;box-shadow:0 5px 22px rgba(0,0,0,.13);max-width:440px}
+  .hud strong{display:block;margin-bottom:3px}
+  .hud small{display:block;opacity:.72;margin-bottom:9px;line-height:1.35}
+  .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px}
+  button,a.btn{font:inherit;font-size:13px;color:#1b252b;background:white;border:1px solid rgba(20,30,35,.2);border-radius:8px;padding:6px 9px;text-decoration:none;cursor:pointer}
+  button:hover,a.btn:hover{background:#f4f6f7}
+  label{font-size:12px;display:flex;gap:5px;align-items:center}
+  #status{font-size:12px;margin-top:8px;opacity:.78;line-height:1.35}
+  .legend{position:absolute;right:14px;bottom:14px;z-index:4;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);border:1px solid rgba(20,30,35,.15);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.55}
+  .sw{display:inline-block;width:24px;height:5px;margin-right:7px;vertical-align:middle;border-radius:3px}
+</style>
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <strong>Le Muids · prototype 3D géoréférencé v0.1</strong>
+    <small>Base réelle swisstopo en LV95 + couche fictive séparée. C'est volontairement encore un prototype de géométrie, pas le rendu final.</small>
+    <div class="row">
+      <button id="pause">⏸ Train</button>
+      <button id="reset">↺ Vue initiale</button>
+      <button id="top">⬇ Vue dessus</button>
+      <label><input id="real" type="checkbox" checked> réseau réel</label>
+      <label><input id="fiction" type="checkbox" checked> fiction</label>
+    </div>
+    <div class="row">
+      <a class="btn" href="./layout-official.html">Plan officiel 2D</a>
+      <a class="btn" href="./layout-fiction-editor.html">Éditer la fiction</a>
+    </div>
+    <div id="status">Chargement…</div>
+  </div>
+  <div class="legend">
+    <div><span class="sw" style="background:#5f6569"></span>routes officielles</div>
+    <div><span class="sw" style="background:#34383b"></span>voies officielles</div>
+    <div><span class="sw" style="background:#9b7a58"></span>boucle train fictive</div>
+    <div><span class="sw" style="background:#d6c9ad"></span>route intérieure fictive</div>
+    <div><span class="sw" style="background:#2b72d6"></span>passages inférieurs prévus</div>
+  </div>
+</div>
+<script type="module" src="./src/muids3d/main.js"></script>
+</body>
+</html>
