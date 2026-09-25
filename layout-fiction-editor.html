@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Le Muids — éditeur fiction sur base officielle</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#131518;color:#eee}
+  #app{height:100%;display:grid;grid-template-rows:auto 1fr}
+  .bar{padding:8px 10px;background:#1d2024;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #353a3f}
+  .bar strong{margin-right:6px}
+  button,label{font-size:12px}
+  button{background:#2a2e33;color:#eee;border:1px solid #50565c;border-radius:6px;padding:5px 8px;cursor:pointer}
+  button:hover{background:#343940}
+  .status{font-size:12px;color:#b8c1c8}
+  .stage{position:relative;overflow:auto;background:#222}
+  .wrap{position:relative;width:min(100vw,1600px);aspect-ratio:14/9;margin:auto;background:#ece9df}
+  #bg,#svg{position:absolute;inset:0;width:100%;height:100%}
+  #bg{object-fit:fill;opacity:.82}
+  .official-road{stroke:#ff9e2c;stroke-width:2.2;fill:none;opacity:.78;vector-effect:non-scaling-stroke}
+  .official-rail{stroke:#df263a;stroke-width:3.0;fill:none;opacity:.92;vector-effect:non-scaling-stroke}
+  .fiction-rail-halo{stroke:#29146b;stroke-width:12;fill:none;opacity:.72;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .fiction-rail{stroke:#795cff;stroke-width:4;fill:none;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .fiction-road-halo{stroke:#7b4f00;stroke-width:14;fill:none;opacity:.72;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .fiction-road{stroke:#ffd15b;stroke-width:6;fill:none;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .control-rail{fill:#8a72ff;stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;cursor:grab}
+  .control-road{fill:#ffd15b;stroke:#342400;stroke-width:2;vector-effect:non-scaling-stroke;cursor:grab}
+  .tunnel{fill:#35a4ff;stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;cursor:grab}
+  .station{fill:#35e38d;stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}
+  .legend{position:absolute;left:12px;bottom:12px;background:rgba(15,17,19,.91);border:1px solid #52575c;border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.55;max-width:400px}
+  .legend b{display:block;margin-bottom:3px}
+  .sw{display:inline-block;width:24px;height:4px;margin-right:7px;vertical-align:middle}
+  .help{position:absolute;right:12px;bottom:12px;background:rgba(15,17,19,.91);border:1px solid #52575c;border-radius:9px;padding:9px 11px;font-size:12px;line-height:1.45;max-width:360px}
+  input[type=range]{width:90px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <strong>Le Muids · fiction editor</strong>
+    <label><input id="official" type="checkbox" checked> données officielles</label>
+    <label><input id="fiction" type="checkbox" checked> fiction</label>
+    <label>fond <input id="opacity" type="range" min="20" max="100" value="82"></label>
+    <button id="reset">Réinitialiser la fiction</button>
+    <button id="export">Exporter JSON fiction</button>
+    <span id="status" class="status">chargement…</span>
+  </div>
+  <div class="stage">
+    <div class="wrap">
+      <img id="bg" alt="Mensuration officielle swisstopo">
+      <svg id="svg" viewBox="0 0 1600 1000" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <b>Source réelle = swisstopo</b>
+        <div><span class="sw" style="background:#ff9e2c"></span>routes / chemins officiels</div>
+        <div><span class="sw" style="background:#df263a"></span>voies ferroviaires officielles</div>
+        <div><span class="sw" style="background:#795cff"></span>boucle ferroviaire fictive</div>
+        <div><span class="sw" style="background:#ffd15b"></span>route intérieure fictive</div>
+        <div><span class="sw" style="background:#35a4ff;height:10px"></span>passages inférieurs de la cantonale</div>
+      </div>
+      <div class="help">
+        <b>Édition</b><br>
+        Fais glisser les points violets, jaunes ou bleus. Les coordonnées restent en LV95 (mètres).<br>
+        Rien de ce qui est orange/rouge n'est dessiné à la main.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { LE_MUIDS, wmsUrl, loadOfficialLayout, geometryToSvgPaths, toScreen } from './src/geo/swisstopo.js';
+
+const W=1600,H=1000,NS='http://www.w3.org/2000/svg';
+const svg=document.querySelector('#svg');
+const bg=document.querySelector('#bg');
+const status=document.querySelector('#status');
+let official=null;
+let initial=null;
+let fiction=null;
+let drag=null;
+
+function el(name,attrs={}){
+  const n=document.createElementNS(NS,name);
+  for(const [k,v] of Object.entries(attrs)) n.setAttribute(k,v);
+  return n;
+}
+function deepCopy(v){return JSON.parse(JSON.stringify(v))}
+function screenToLv95(x,y){
+  const [minE,minN,maxE,maxN]=LE_MUIDS.bbox;
+  return [
+    minE+(x/W)*(maxE-minE),
+    minN+((H-y)/H)*(maxN-minN)
+  ];
+}
+function pointPath(points){
+  return points.map((p,i)=>{
+    const [x,y]=toScreen(p,LE_MUIDS.bbox,W,H);
+    return (i?'L':'M')+x.toFixed(2)+','+y.toFixed(2);
+  }).join(' ');
+}
+function addPath(d,cls,group){
+  group.appendChild(el('path',{d,class:cls}));
+}
+function addControl(p,cls,type,index,group){
+  const [x,y]=toScreen(p,LE_MUIDS.bbox,W,H);
+  const c=el('circle',{cx:x,cy:y,r:7,class:cls,'data-type':type,'data-index':index});
+  c.addEventListener('pointerdown',e=>{
+    c.setPointerCapture(e.pointerId);
+    drag={type,index,pointerId:e.pointerId,node:c};
+  });
+  group.appendChild(c);
+}
+function addTunnel(t,index,group){
+  const [x,y]=toScreen(t.xy,LE_MUIDS.bbox,W,H);
+  const r=el('rect',{x:x-8,y:y-8,width:16,height:16,rx:3,class:'tunnel','data-type':'tunnel','data-index':index});
+  r.addEventListener('pointerdown',e=>{
+    r.setPointerCapture(e.pointerId);
+    drag={type:'tunnel',index,pointerId:e.pointerId,node:r};
+  });
+  group.appendChild(r);
+}
+function pointerSvgXY(e){
+  const pt=svg.createSVGPoint();
+  pt.x=e.clientX;pt.y=e.clientY;
+  const m=svg.getScreenCTM().inverse();
+  const p=pt.matrixTransform(m);
+  return [p.x,p.y];
+}
+
+svg.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const [x,y]=pointerSvgXY(e);
+  const ll=screenToLv95(x,y);
+  if(drag.type==='rail') fiction.railLoop[drag.index]=ll;
+  else if(drag.type==='road') fiction.innerRoadLoop[drag.index]=ll;
+  else fiction.tunnels[drag.index].xy=ll;
+  draw();
+});
+svg.addEventListener('pointerup',()=>drag=null);
+svg.addEventListener('pointercancel',()=>drag=null);
+
+function draw(){
+  svg.replaceChildren();
+
+  const gOfficial=el('g',{id:'gOfficial'});
+  const gFiction=el('g',{id:'gFiction'});
+  svg.append(gOfficial,gFiction);
+
+  if(official){
+    for(const feature of official.features){
+      const layer=feature.properties?._layer||'';
+      const cls=layer.includes('eisenbahnnetz')?'official-rail':'official-road';
+      for(const d of geometryToSvgPaths(feature.geometry,LE_MUIDS.bbox,W,H)) addPath(d,cls,gOfficial);
+    }
+  }
+
+  const [sx,sy]=toScreen(LE_MUIDS.station,LE_MUIDS.bbox,W,H);
+  gOfficial.appendChild(el('circle',{cx:sx,cy:sy,r:8,class:'station'}));
+
+  if(fiction){
+    addPath(pointPath(fiction.railLoop),'fiction-rail-halo',gFiction);
+    addPath(pointPath(fiction.railLoop),'fiction-rail',gFiction);
+    addPath(pointPath(fiction.innerRoadLoop),'fiction-road-halo',gFiction);
+    addPath(pointPath(fiction.innerRoadLoop),'fiction-road',gFiction);
+
+    fiction.railLoop.forEach((p,i)=>addControl(p,'control-rail','rail',i,gFiction));
+    fiction.innerRoadLoop.forEach((p,i)=>addControl(p,'control-road','road',i,gFiction));
+    fiction.tunnels.forEach((t,i)=>addTunnel(t,i,gFiction));
+  }
+
+  gOfficial.style.display=document.querySelector('#official').checked?'':'none';
+  gFiction.style.display=document.querySelector('#fiction').checked?'':'none';
+}
+
+async function load(){
+  status.textContent='chargement officiel + fiction…';
+  bg.src=wmsUrl(LE_MUIDS.layers.cadastralWms,LE_MUIDS.bbox,W,H);
+  try{
+    const [o,f]=await Promise.all([
+      loadOfficialLayout(LE_MUIDS.bbox),
+      fetch('./data/le_muids_fiction_v01.json').then(r=>r.json())
+    ]);
+    official=o;
+    initial=f;
+    fiction=deepCopy(f);
+    status.textContent='prêt · glisse les points · exporte quand le plan est bon';
+    draw();
+  }catch(err){
+    console.error(err);
+    status.textContent='Erreur: '+err.message;
+  }
+}
+
+document.querySelector('#official').addEventListener('change',draw);
+document.querySelector('#fiction').addEventListener('change',draw);
+document.querySelector('#opacity').addEventListener('input',e=>bg.style.opacity=Number(e.target.value)/100);
+document.querySelector('#reset').addEventListener('click',()=>{fiction=deepCopy(initial);draw()});
+document.querySelector('#export').addEventListener('click',()=>{
+  const out={
+    ...fiction,
+    meta:{...fiction.meta,exportedAt:new Date().toISOString(),bbox:LE_MUIDS.bbox}
+  };
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='le_muids_fiction_lv95.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+load();
+</script>
+</body>
+</html>
