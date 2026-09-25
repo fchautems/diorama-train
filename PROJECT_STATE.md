@@ -115,3 +115,35 @@ Tester `le-muids-3d.html`, puis:
 3. intégrer swissBUILDINGS3D dans un repère ENU local;
 4. remplacer les marqueurs de tunnels par deux vraies séquences de passage inférieur;
 5. seulement ensuite réintroduire végétation/animaux/personnages.
+
+
+## Prototype 3D LV95 v0.2
+Ajouts:
+- `src/geo/terrain.js`: génération d'un maillage terrain à partir du service `profile.json` de swisstopo;
+- grille 41×31 sur la bbox actuelle, soit ~1'271 points d'altitude;
+- interpolation bilinéaire pour placer routes, voies, gare et fiction sur le relief;
+- texture WMS officielle projetée sur le maillage;
+- la Route cantonale descend progressivement de ~7.5 m autour des 4 marqueurs de passage inférieur;
+- `src/geo/geodesy.js`: conversion LV95 -> WGS84 / ECEF avec REFRAME, plus fallback local;
+- intégration optionnelle de `swissBUILDINGS3D` via `3d-tiles-renderer`;
+- transformation du tileset ECEF vers le repère local est/up/sud centré sur la gare;
+- boutons `relief` et `bâtiments 3D` ajoutés dans `le-muids-3d.html`.
+
+Endpoint bâtiments:
+`https://3d.geo.admin.ch/ch.swisstopo.swissbuildings3d.3d/v1/tileset.json`
+
+## À valider visuellement
+- orientation et alignement horizontal des bâtiments 3D;
+- alignement vertical swissBUILDINGS3D / terrain local;
+- relief suffisamment lisible sans exagération;
+- continuité de la Route cantonale dans les passages inférieurs;
+- absence de clipping ou de chargement excessif des 3D Tiles.
+
+## Limites restantes
+- les tunnels ne percent pas encore physiquement le terrain: la route descend sous la surface et des volumes bleus servent encore de repères;
+- les bâtiments 3D sont encore rendus dans leur style officiel, pas encore stylisés façon diorama;
+- aucune végétation officielle 3D n'est chargée;
+- la couche fiction reste ajustable dans `layout-fiction-editor.html`.
+
+## Prochaine action
+Tester `le-muids-3d.html` avec `bâtiments 3D` activé. Si l'alignement est bon, passer à la stylisation des bâtiments et à la vraie géométrie de tunnels; sinon corriger d'abord le transform ECEF -> local.
