@@ -1,0 +1,37 @@
+name: Visual smoke check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install test dependencies
+        run: npm install
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run visual smoke test
+        run: npm run visual:check
+
+      - name: Upload screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: le-muids-visual-smoke
+          path: |
+            test-results/le-muids-qa.png
+            test-results/le-muids-qa.json
+            test-results/**
+          if-no-files-found: warn
