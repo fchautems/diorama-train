@@ -10,7 +10,7 @@ test('Le Muids visual smoke control', async ({ page }) => {
     if (message.type() === 'error') browserErrors.push(message.text());
   });
 
-  await page.goto('/le-muids-3d.html?qa=1', {
+  await page.goto('/le-muids-3d.html', {
     waitUntil: 'domcontentloaded'
   });
 
@@ -51,7 +51,15 @@ test('Le Muids visual smoke control', async ({ page }) => {
   expect(qa.joinAnglesDeg.south).toBeLessThan(18);
 
   await page.screenshot({
-    path: 'test-results/le-muids-qa.png',
+    path: 'test-results/le-muids-perspective.png',
+    fullPage: true
+  });
+
+  await page.click('#top');
+  await page.waitForTimeout(1200);
+
+  await page.screenshot({
+    path: 'test-results/le-muids-top.png',
     fullPage: true
   });
 
