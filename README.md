@@ -12,27 +12,22 @@ Le lanceur démarre automatiquement un petit serveur local sur le port 8000 puis
 
 Fermer la fenêtre du serveur pour arrêter le diorama.
 
-## Scène actuelle — v0.3
+## Scène actuelle — v0.4
 
-Cette version remplace la logique de "démo d'objets posés sur un disque" par une scène structurée :
+Passe corrective basée sur les captures de v0.3 :
 
-- plateau elliptique agrandi ;
-- boucle ferroviaire refaite : ballast plat, deux rails fins et traverses ;
-- locomotive + 2 wagons ;
-- ralentissement et arrêt automatique du train en gare pendant 4,5 s ;
-- quai, bancs et lampadaires ;
-- 5 personnages, dont 4 promeneurs et 1 personnage à la gare ;
-- les promeneurs suivent désormais des chemins définis et visibles au lieu de traverser librement la scène ;
-- pâturage avec 3 vaches Quaternius ;
-- étang ;
-- relief bas intégré au fond de la maquette à la place des grands cônes montagneux ;
-- ciel sans brouillard ;
-- nuages low-poly mobiles ;
-- 36 arbres environ, avec plusieurs formes provenant du Kenney Nature Kit ;
-- buissons, touffes d'herbe et rochers low-poly ;
-- zones d'exclusion autour des rails, chemins, bâtiments et étang pour éviter la végétation mal placée ;
-- bascule jour/nuit avec lampes de gare ;
-- pause et remise à zéro de la caméra.
+- rendu moins délavé : tone mapping neutre, lumière ambiante mieux répartie et palette du terrain plus soutenue ;
+- matériaux Nature Kit légèrement rehaussés pour éviter les végétaux presque noirs ;
+- suppression de la grande place ovale centrale qui se superposait aux chemins ;
+- chemins piétons un peu plus étroits et placés à des hauteurs légèrement différentes pour éviter le z-fighting aux croisements ;
+- enclos des vaches déplacé à l'intérieur de la boucle ferroviaire et refait avec des rails continus : les quatre côtés sont fermés ;
+- vaches accélérées et animation `walk` prioritaire pour que le déplacement soit réellement visible ;
+- suppression des gros reliefs/rochers qui donnaient un paysage de blocs ;
+- remplacement du fond par une ligne d'arbres et seulement quelques petits rochers discrets ;
+- végétation un peu moins dense pour améliorer la lisibilité ;
+- arrêt du train décalé d'environ 4,2 m afin de mieux aligner la locomotive sur le quai ;
+- personnage statique de la gare remplacé par un petit trajet aller-retour sur le quai ;
+- le lanceur Windows `START_DIORAMA.bat` reste inchangé.
 
 ## Choix techniques
 
