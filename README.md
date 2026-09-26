@@ -81,3 +81,13 @@ Cette version est la première dont le contrôle avant livraison vérifie réell
 - raccords rail réel/fictif mesurés automatiquement;
 - alignement vertical swissBUILDINGS3D/terrain corrigé automatiquement;
 - boucle resserrée autour d'environ 116 m de vraie voie puis envoyée vers la périphérie droite.
+
+
+### v0.5.3 — plateau agrandi
+
+- terrain étendu sur les quatre côtés;
+- cœur du village conservé comme zone de bâtiments officielle, sans densifier les nouvelles marges;
+- davantage de vraie voie conservée autour de la gare;
+- boucle ferroviaire élargie dans la ceinture périphérique;
+- maisons légèrement remontées après leur recalage automatique sur le relief;
+- contrôle screenshot désormais manuel uniquement.
