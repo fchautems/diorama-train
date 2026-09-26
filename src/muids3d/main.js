@@ -47,6 +47,8 @@ scene.background = new THREE.Color(0xb9d6e5);
 const camera = new THREE.PerspectiveCamera(42, 1, 1, 7000);
 
 const [sceneMinE, sceneMinN, sceneMaxE, sceneMaxN] = LE_MUIDS.bbox;
+const [villageMinE, villageMinN, villageMaxE, villageMaxN] =
+  LE_MUIDS.villageContentBbox || LE_MUIDS.bbox;
 const sceneCenter = new THREE.Vector3(
   (sceneMinE + sceneMaxE) / 2 - LE_MUIDS.station[0],
   16,
@@ -582,12 +584,12 @@ function buildStationRightRailLoop(official) {
     throw new Error('No official railway geometry available near Le Muids station');
   }
 
-  // Keep only a compact real section around the station. The previous 210 m
-  // section forced the return leg diagonally across the central field.
+  // v0.5.3: with a larger plateau we can keep substantially more of the
+  // genuine railway on BOTH sides of the station before peeling away.
   let realSegment = extractPolylineWindow(
     stitched,
     LE_MUIDS.station,
-    58
+    95
   );
 
   if (realSegment[0][1] > realSegment[realSegment.length - 1][1]) {
@@ -604,56 +606,57 @@ function buildStationRightRailLoop(official) {
   );
 
   const [minE, minN, maxE, maxN] = LE_MUIDS.bbox;
-  const top = maxN - 14;
-  const bottom = minN + 14;
-  const right = maxE - 14;
-  const leftLoopE = Math.max(
-    LE_MUIDS.station[0] + 62,
-    minE + 125
-  );
+  const top = maxN - 18;
+  const bottom = minN + 18;
+  const right = maxE - 18;
   const midN = (minN + maxN) / 2;
 
-  // Both exits stay in the direction of the real railway first, then sweep
-  // smoothly towards the outer edge. This prevents a perpendicular/diagonal
-  // shortcut through the field.
-  const northEntry = [leftLoopE, top];
-  const southEntry = [leftLoopE, bottom];
+  // Leave the real railway tangentially and only bend once we are well clear
+  // of the station. The larger map gives these transitions room to breathe.
+  const northEntry = [
+    Math.max(LE_MUIDS.station[0] + 105, northEnd[0] + 85),
+    Math.min(top, northEnd[1] + 55)
+  ];
+
+  const southEntry = [
+    Math.max(LE_MUIDS.station[0] + 105, southEnd[0] + 85),
+    Math.max(bottom, southEnd[1] - 55)
+  ];
 
   const northTransition = cubicBezierSamples(
     northEnd,
     northEntry,
     northRailDir,
     [1, 0],
-    42,
-    36,
-    18
+    70,
+    55,
+    22
   );
 
-  // This transition is built from the bottom perimeter back into the real
-  // southern track, with the arrival tangent matching the official railway.
   const southTransition = cubicBezierSamples(
     southEntry,
     southEnd,
     [-1, 0],
     southRailDir,
-    36,
-    42,
-    18
+    55,
+    70,
+    22
   );
 
-  // Perimeter loop: top edge -> far right -> bottom edge. Keep it outside the
-  // dense village core as much as the current diorama extent allows.
+  // Wide perimeter loop. It deliberately uses the NEW outer margin rather
+  // than the dense village core, which reduces collisions without deleting
+  // houses.
   const outerArc = [
     northEntry,
-    [LE_MUIDS.station[0] + 165, top],
-    [maxE - 90, top],
-    [maxE - 35, top - 30],
-    [right, midN + 60],
+    [LE_MUIDS.station[0] + 210, top],
+    [maxE - 105, top],
+    [maxE - 42, top - 38],
+    [right, midN + 78],
     [right, midN],
-    [right, midN - 60],
-    [maxE - 35, bottom + 30],
-    [maxE - 90, bottom],
-    [LE_MUIDS.station[0] + 165, bottom],
+    [right, midN - 78],
+    [maxE - 42, bottom + 38],
+    [maxE - 105, bottom],
+    [LE_MUIDS.station[0] + 210, bottom],
     southEntry
   ];
 
@@ -883,10 +886,10 @@ async function buildTrain(curve) {
 }
 
 function sceneClippingPlanes() {
-  const minX = sceneMinE - centerE;
-  const maxX = sceneMaxE - centerE;
-  const minZ = -(sceneMaxN - centerN);
-  const maxZ = -(sceneMinN - centerN);
+  const minX = villageMinE - centerE;
+  const maxX = villageMaxE - centerE;
+  const minZ = -(villageMaxN - centerN);
+  const maxZ = -(villageMinN - centerN);
 
   const bottomCut = terrainModel
     ? terrainModel.minHeight - terrainModel.stationHeight - 3
@@ -1037,14 +1040,17 @@ function ensureOfficialLayerAligned(tiles, kind) {
   const estimated = estimateOfficialLayerVerticalOffset(tiles.group);
   if (!Number.isFinite(estimated)) return null;
 
+  const visualBias = kind === 'buildings' ? 0.8 : 0.35;
+  const adjusted = estimated + visualBias;
+
   if (kind === 'buildings') {
-    buildingVerticalOffset = estimated;
+    buildingVerticalOffset = adjusted;
   } else {
-    vegetationVerticalOffset = estimated;
+    vegetationVerticalOffset = adjusted;
   }
 
-  applyOfficialLayerVerticalOffset(tiles, estimated);
-  return estimated;
+  applyOfficialLayerVerticalOffset(tiles, adjusted);
+  return adjusted;
 }
 
 function officialLayerBoundsSummary(tiles) {
@@ -1069,10 +1075,10 @@ function countRaisedOfficialMeshes(tiles) {
   let count = 0;
   const box = new THREE.Box3();
 
-  const minX = sceneMinE - centerE;
-  const maxX = sceneMaxE - centerE;
-  const minZ = -(sceneMaxN - centerN);
-  const maxZ = -(sceneMinN - centerN);
+  const minX = villageMinE - centerE;
+  const maxX = villageMaxE - centerE;
+  const minZ = -(villageMaxN - centerN);
+  const maxZ = -(villageMinN - centerN);
   const minTerrainY = terrainModel
     ? terrainModel.minHeight - terrainModel.stationHeight
     : -20;
@@ -1154,10 +1160,13 @@ async function createOfficialTilesLayer(url, kind, toggle) {
       const estimated = estimateOfficialLayerVerticalOffset(event.scene);
 
       if (Number.isFinite(estimated)) {
-        if (kind === 'buildings') buildingVerticalOffset = estimated;
-        else vegetationVerticalOffset = estimated;
+        const visualBias = kind === 'buildings' ? 0.8 : 0.35;
+        const adjusted = estimated + visualBias;
 
-        applyOfficialLayerVerticalOffset(tiles, estimated);
+        if (kind === 'buildings') buildingVerticalOffset = adjusted;
+        else vegetationVerticalOffset = adjusted;
+
+        applyOfficialLayerVerticalOffset(tiles, adjusted);
         event.scene?.updateMatrixWorld(true);
       }
     }
