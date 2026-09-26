@@ -1,9 +1,10 @@
 export const LE_MUIDS = {
   sr: 2056,
   // Official coordinates are in LV95 metres.
-  // Tight scene extent chosen to match the actual Le Muids village view:
-  // station on the left, village on the right. Approx. 505 x 295 m.
-  bbox: [2505955, 1145355, 2506460, 1145650],
+  // Expanded diorama extent: more breathing room on all four sides.
+  // The village content itself remains clipped to the original compact area.
+  bbox: [2505885, 1145295, 2506530, 1145710],
+  villageContentBbox: [2505955, 1145355, 2506460, 1145650],
   station: [2506023.16, 1145508.25],
   layers: {
     roads: 'ch.swisstopo.swisstlm3d-strassen',
