@@ -298,3 +298,27 @@ Corrections v0.5.2:
 
 Décision:
 **ne pas reprendre la route intérieure/tunnels tant que cette géométrie ferroviaire n'est pas validée par l'utilisateur.**
+
+
+## v0.5.3 — plateau agrandi / voie réelle prolongée
+Décision utilisateur:
+- rester dans le chat, ne plus utiliser Work pour cette passe;
+- arrêter de bloquer le workflow sur les screenshots automatiques;
+- avancer par essais manuels.
+
+Changements:
+- bbox terrain agrandie sur les 4 côtés: ~645 × 415 m;
+- conservation d'une bbox séparée pour le contenu dense du village afin de ne pas charger de nouvelles maisons tout autour;
+- portion réelle de voie autour de la gare augmentée à ~190 m visés;
+- raccords allongés et boucle repoussée dans la nouvelle marge extérieure;
+- la boucle exploite davantage le haut, la droite et le bas du plateau au lieu de couper le cœur bâti;
+- bâtiments toujours auto-alignés sur le terrain, avec un léger biais visuel +0.8 m;
+- végétation conserve un biais léger +0.35 m quand elle est calibrée séparément;
+- workflow screenshot GitHub Actions passé en déclenchement manuel uniquement.
+
+À tester manuellement:
+1. plateau visiblement plus grand;
+2. train suit plus longtemps la vraie voie en haut-gauche et en bas-gauche;
+3. boucle plus large et moins proche des maisons;
+4. maisons visuellement mieux posées sur le terrain;
+5. aucun nouveau bâti chargé dans la ceinture extérieure.
